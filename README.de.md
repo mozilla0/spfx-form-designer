@@ -3,8 +3,11 @@
 [English](README.md) · **Deutsch**
 
 WYSIWYG-Formulardesigner für SharePoint-Online-Listen. Formulare werden im Browser per Drag-and-drop gestaltet und als **SPFx List Form Customizer** bereitgestellt – ohne Windows-Desktop-Tool.
+<img width="2555" height="660" alt="Bildschirmfoto_20261103_194310" src="https://github.com/user-attachments/assets/573f689a-20a0-43d1-9c06-adb93c852926" />
+<img width="1102" height="1122" alt="Bildschirmfoto_20261103_194232" src="https://github.com/user-attachments/assets/7cfd552e-5582-47bf-9e83-ef681c342074" />
+<img width="1261" height="989" alt="Bildschirmfoto_20261103_194206" src="https://github.com/user-attachments/assets/bdd9f012-a717-42b2-a1fd-0fac8a9a0b72" />
+<img width="1094" height="989" alt="Bildschirmfoto_20261103_194146" src="https://github.com/user-attachments/assets/8625e4de-eaae-44be-880c-e6a2138aab09" />
 
-Autor: Matthias Hummler
 
 ## Bestandteile
 
