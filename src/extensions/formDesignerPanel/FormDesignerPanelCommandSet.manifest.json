@@ -1,0 +1,16 @@
+{
+  "$schema": "https://developer.microsoft.com/json-schemas/spfx/command-set-extension-manifest.schema.json",
+  "id": "90aa0ce7-8728-40ea-b79e-22ea9ac57bb3",
+  "alias": "FormDesignerPanelCommandSet",
+  "componentType": "Extension",
+  "extensionType": "ListViewCommandSet",
+  "version": "*",
+  "manifestVersion": 2,
+  "requiresCustomScript": false,
+  "items": {
+    "FD_DIAG": {
+      "title": { "default": "Form Designer: Diagnose" },
+      "type": "command"
+    }
+  }
+}

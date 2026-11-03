@@ -1,0 +1,40 @@
+{
+  "$schema": "https://developer.microsoft.com/json-schemas/spfx-build/package-solution.schema.json",
+  "solution": {
+    "name": "Form Designer",
+    "id": "127e8f36-96a7-4e1e-9d88-032019cbe166",
+    "version": "1.2.0.0",
+    "includeClientSideAssets": true,
+    "skipFeatureDeployment": true,
+    "isDomainIsolated": false,
+    "developer": {
+      "name": "Matthias Hummler",
+      "websiteUrl": "https://github.com/mozilla0",
+      "privacyUrl": "",
+      "termsOfUseUrl": "",
+      "mpnId": "Undefined-1.23.2"
+    },
+    "metadata": {
+      "shortDescription": {
+        "default": "WYSIWYG-Formulardesigner für SharePoint-Listen"
+      },
+      "longDescription": {
+        "default": "Form Designer gestaltet Formulare für SharePoint-Listen per Drag-and-drop – mit Tabs, Abschnitten, Validierung, Standardwerten und Formular-Skript – und stellt sie als List Form Customizer bereit."
+      },
+      "screenshotPaths": [],
+      "videoUrl": "",
+      "categories": []
+    },
+    "features": [
+      {
+        "title": "Form Designer",
+        "description": "Designer-Webpart, Formular-Runtime (List Form Customizer) und Panel-Erweiterung (ListView Command Set).",
+        "id": "c6c72754-4148-44d7-9db5-d5cd1987492c",
+        "version": "1.2.0.0"
+      }
+    ]
+  },
+  "paths": {
+    "zippedPackage": "solution/form-designer.sppkg"
+  }
+}

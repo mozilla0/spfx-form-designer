@@ -1,0 +1,20 @@
+{
+  "$schema": "https://developer.microsoft.com/json-schemas/spfx/client-side-web-part-manifest.schema.json",
+  "id": "d1136067-8677-4844-be34-67e0de71244b",
+  "alias": "FormDesignerWebPart",
+  "componentType": "WebPart",
+  "version": "*",
+  "manifestVersion": 2,
+  "requiresCustomScript": false,
+  "supportedHosts": ["SharePointWebPart", "SharePointFullPage"],
+  "supportsThemeVariants": false,
+  "supportsFullBleed": true,
+  "preconfiguredEntries": [{
+    "groupId": "5c03119e-3074-46fd-976b-c60198311f70",
+    "group": { "default": "Advanced" },
+    "title": { "default": "Form Designer", "de-DE": "Form Designer" },
+    "description": { "default": "WYSIWYG-Designer für SharePoint-Listenformulare", "de-DE": "WYSIWYG-Designer für SharePoint-Listenformulare" },
+    "officeFabricIconFontName": "FormLibrary",
+    "properties": {}
+  }]
+}

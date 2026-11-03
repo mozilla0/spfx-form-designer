@@ -1,0 +1,36 @@
+{
+  "$schema": "https://developer.microsoft.com/json-schemas/spfx-build/config.2.0.schema.json",
+  "version": "2.0",
+  "bundles": {
+    "form-designer-runtime-form-customizer": {
+      "components": [
+        {
+          "entrypoint": "./lib/extensions/formDesignerRuntime/FormDesignerRuntimeFormCustomizer.js",
+          "manifest": "./src/extensions/formDesignerRuntime/FormDesignerRuntimeFormCustomizer.manifest.json"
+        }
+      ]
+    },
+    "form-designer-web-part": {
+      "components": [
+        {
+          "entrypoint": "./lib/webparts/formDesigner/FormDesignerWebPart.js",
+          "manifest": "./src/webparts/formDesigner/FormDesignerWebPart.manifest.json"
+        }
+      ]
+    },
+    "form-designer-panel-command-set": {
+      "components": [
+        {
+          "entrypoint": "./lib/extensions/formDesignerPanel/FormDesignerPanelCommandSet.js",
+          "manifest": "./src/extensions/formDesignerPanel/FormDesignerPanelCommandSet.manifest.json"
+        }
+      ]
+    }
+  },
+  "externals": {},
+  "localizedResources": {
+    "FormDesignerRuntimeFormCustomizerStrings": "lib/extensions/formDesignerRuntime/loc/{locale}.js",
+    "FormDesignerWebPartStrings": "lib/webparts/formDesigner/loc/{locale}.js",
+    "FormDesignerPanelCommandSetStrings": "lib/extensions/formDesignerPanel/loc/{locale}.js"
+  }
+}
