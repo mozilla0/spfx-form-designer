@@ -8,6 +8,9 @@ import { validateFieldValue } from '../validation';
 import { FormScriptHost, IScriptHostBridge, MessageKind } from '../scriptEngine';
 import { FieldControl } from './FieldControl';
 import { FormHeader } from './FormHeader';
+import { getLanguage, t } from '../i18n';
+import { localizeDefinition } from '../translate';
+import { ContentLanguage } from '../model';
 
 export interface IFormHostProps {
   definition: IFormDefinition;
@@ -21,6 +24,8 @@ export interface IFormHostProps {
   onSubmit: (values: FieldValues) => Promise<void>;
   onCancel: () => void;
   onRequestEdit?: () => void;
+  /** Sprache der Formularinhalte; Standard: Sprache der Seite. */
+  contentLanguage?: ContentLanguage;
 }
 
 interface IFormHostState {
@@ -36,11 +41,9 @@ interface IMessage {
 
 type Flag = 'visible' | 'required' | 'disabled';
 
-const FALLBACK_TITLES: Record<FormMode, string> = {
-  new: 'Neues Element',
-  edit: 'Element bearbeiten',
-  display: 'Element anzeigen'
-};
+function fallbackTitle(mode: FormMode): string {
+  return mode === 'new' ? t('Neues Element') : mode === 'edit' ? t('Element bearbeiten') : t('Element anzeigen');
+}
 
 const MESSAGE_TYPES: Record<MessageKind, MessageBarType> = {
   info: MessageBarType.info,
@@ -61,9 +64,11 @@ export class FormHost extends React.Component<IFormHostProps, IFormHostState> {
   private titleOverride: string | undefined;
   private readonly fieldsByName: Record<string, ISpField> = {};
   private readonly host: FormScriptHost;
+  private readonly def: IFormDefinition;
 
   constructor(props: IFormHostProps) {
     super(props);
+    this.def = localizeDefinition(props.definition, props.contentLanguage || getLanguage());
     props.fields.forEach((f) => {
       this.fieldsByName[f.internalName] = f;
     });
@@ -72,28 +77,29 @@ export class FormHost extends React.Component<IFormHostProps, IFormHostState> {
       this.applyDefaults();
     }
     this.host = new FormScriptHost(this.createBridge());
-    const firstTab = props.definition.tabs[0];
+    const firstTab = this.def.tabs[0];
     this.state = { activeTab: firstTab ? firstTab.id : '', saving: false, revision: 0 };
   }
 
   public componentDidMount(): void {
-    this.host.run(this.props.definition.script);
+    this.host.run(this.def.script);
     this.host.fireReady();
     this.refresh();
   }
 
   public render(): React.ReactElement<IFormHostProps> {
-    const { definition, mode } = this.props;
+    const definition = this.def;
+    const { mode } = this.props;
     const displayOnly = mode === 'display';
     const tabs = definition.tabs.filter((t) => definition.sections.some((s) => s.tabId === t.id));
     const activeTab = tabs.some((t) => t.id === this.state.activeTab) ? this.state.activeTab : tabs[0] ? tabs[0].id : '';
 
     return (
       <Stack tokens={{ childrenGap: 16 }} styles={{ root: { padding: '16px 20px', maxWidth: 960, margin: '0 auto', boxSizing: 'border-box', width: '100%' } }}>
-        <FormHeader title={this.title()} subtitle={this.subtitle()} header={this.props.definition.header} />
+        <FormHeader title={this.title()} subtitle={this.subtitle()} header={this.def.header} />
 
         {this.props.preview && (
-          <MessageBar messageBarType={MessageBarType.info}>Vorschau mit ausgeführtem Formular-Skript – es wird nichts in SharePoint gespeichert.</MessageBar>
+          <MessageBar messageBarType={MessageBarType.info}>{t('Vorschau mit ausgeführtem Formular-Skript – es wird nichts in SharePoint gespeichert.')}</MessageBar>
         )}
         {this.scriptErrors.map((e, i) => (
           <MessageBar key={`se${i}`} messageBarType={MessageBarType.severeWarning}>
@@ -101,16 +107,16 @@ export class FormHost extends React.Component<IFormHostProps, IFormHostState> {
           </MessageBar>
         ))}
         {this.messages.map((m, i) => (
-          <MessageBar key={`m${i}`} messageBarType={MESSAGE_TYPES[m.kind]} onDismiss={() => this.dismissMessage(i)} dismissButtonAriaLabel="Schliessen">
+          <MessageBar key={`m${i}`} messageBarType={MESSAGE_TYPES[m.kind]} onDismiss={() => this.dismissMessage(i)} dismissButtonAriaLabel={t('Schliessen')}>
             {m.text}
           </MessageBar>
         ))}
 
         {tabs.length > 1 && (
           <Pivot selectedKey={activeTab} onLinkClick={(item) => item && this.setState({ activeTab: String(item.props.itemKey) })} headersOnly>
-            {tabs.map((t) => {
-              const n = this.errorCount(t.id);
-              return <PivotItem key={t.id} itemKey={t.id} headerText={n ? `${t.label} (${n} Fehler)` : t.label} />;
+            {tabs.map((tab) => {
+              const n = this.errorCount(tab.id);
+              return <PivotItem key={tab.id} itemKey={tab.id} headerText={n ? t('{0} ({1} Fehler)', tab.label, n) : tab.label} />;
             })}
           </Pivot>
         )}
@@ -120,16 +126,16 @@ export class FormHost extends React.Component<IFormHostProps, IFormHostState> {
           .map((s) => this.renderSection(s, displayOnly))}
 
         <Stack horizontal horizontalAlign="end" tokens={{ childrenGap: 8 }} styles={{ root: { borderTop: '1px solid #edebe9', paddingTop: 16 } }}>
-          {this.state.saving && <Spinner size={SpinnerSize.small} label="Wird gespeichert …" labelPosition="right" />}
+          {this.state.saving && <Spinner size={SpinnerSize.small} label={t('Wird gespeichert …')} labelPosition="right" />}
           {displayOnly ? (
             <>
-              {this.props.onRequestEdit && <PrimaryButton text="Bearbeiten" onClick={this.props.onRequestEdit} />}
-              <DefaultButton text="Schliessen" onClick={this.props.onCancel} />
+              {this.props.onRequestEdit && <PrimaryButton text={t('Bearbeiten')} onClick={this.props.onRequestEdit} />}
+              <DefaultButton text={t('Schliessen')} onClick={this.props.onCancel} />
             </>
           ) : (
             <>
-              <PrimaryButton text="Speichern" disabled={this.state.saving} onClick={() => this.submit().catch(() => undefined)} />
-              <DefaultButton text="Abbrechen" disabled={this.state.saving} onClick={this.props.onCancel} />
+              <PrimaryButton text={t('Speichern')} disabled={this.state.saving} onClick={() => this.submit().catch(() => undefined)} />
+              <DefaultButton text={t('Abbrechen')} disabled={this.state.saving} onClick={this.props.onCancel} />
             </>
           )}
         </Stack>
@@ -183,11 +189,11 @@ export class FormHost extends React.Component<IFormHostProps, IFormHostState> {
   }
 
   private settings(name: string): IFieldSettings {
-    return this.props.definition.fields[name] || { required: false, readOnly: false, width: 'half', visibility: { operator: 'always' }, validation: { pattern: 'none', dateRule: 'none' }, defaultValue: { mode: 'none' } };
+    return this.def.fields[name] || { required: false, readOnly: false, width: 'half', visibility: { operator: 'always' }, validation: { pattern: 'none', dateRule: 'none' }, defaultValue: { mode: 'none' } };
   }
 
   private applyDefaults(): void {
-    Object.keys(this.props.definition.fields).forEach((name) => {
+    Object.keys(this.def.fields).forEach((name) => {
       const field = this.fieldsByName[name];
       if (!field) {
         return;
@@ -197,7 +203,7 @@ export class FormHost extends React.Component<IFormHostProps, IFormHostState> {
         return;
       }
       if (r.error) {
-        this.scriptErrors.push(`Standardwert «${this.settings(name).label || field.title}»: ${r.error}`);
+        this.scriptErrors.push(t('Standardwert «{0}»: {1}', this.settings(name).label || field.title, r.error));
       } else if (isEmptyValue(this.values[name])) {
         this.values[name] = r.value;
       }
@@ -246,17 +252,17 @@ export class FormHost extends React.Component<IFormHostProps, IFormHostState> {
     if (this.titleOverride !== undefined) {
       return this.titleOverride;
     }
-    return this.resolve(this.props.definition.titles[this.props.mode] || '') || FALLBACK_TITLES[this.props.mode];
+    return this.resolve(this.def.titles[this.props.mode] || '') || fallbackTitle(this.props.mode);
   }
 
   private subtitle(): string | undefined {
-    const h = this.props.definition.header;
+    const h = this.def.header;
     return h && h.subtitle ? this.resolve(h.subtitle) || undefined : undefined;
   }
 
   private errorCount(tabId: string): number {
     let n = 0;
-    this.props.definition.sections.forEach((s) => {
+    this.def.sections.forEach((s) => {
       if (s.tabId === tabId) {
         s.fields.forEach((f) => {
           if (this.errors[f]) {
@@ -313,7 +319,7 @@ export class FormHost extends React.Component<IFormHostProps, IFormHostState> {
   }
 
   private async submit(): Promise<void> {
-    const { definition } = this.props;
+    const definition = this.def;
     this.messages = [];
     this.errors = {};
     let firstTab: string | undefined;
@@ -328,7 +334,7 @@ export class FormHost extends React.Component<IFormHostProps, IFormHostState> {
     );
     const count = Object.keys(this.errors).length;
     if (count) {
-      this.messages.push({ kind: 'error', text: count === 1 ? 'Ein Feld ist ungültig. Bitte die Markierung prüfen.' : `${count} Felder sind ungültig. Bitte die Markierungen prüfen.` });
+      this.messages.push({ kind: 'error', text: count === 1 ? t('Ein Feld ist ungültig. Bitte die Markierung prüfen.') : t('{0} Felder sind ungültig. Bitte die Markierungen prüfen.', count) });
       if (firstTab && this.errorCount(this.state.activeTab) === 0) {
         this.setState({ activeTab: firstTab });
       }
@@ -347,10 +353,10 @@ export class FormHost extends React.Component<IFormHostProps, IFormHostState> {
     try {
       await this.props.onSubmit({ ...this.values });
       if (this.props.preview) {
-        this.messages.push({ kind: 'success', text: 'Gespeichert (Vorschau – es wurde nichts geschrieben).' });
+        this.messages.push({ kind: 'success', text: t('Gespeichert (Vorschau – es wurde nichts geschrieben).') });
       }
     } catch (e) {
-      this.messages.push({ kind: 'error', text: `Speichern fehlgeschlagen: ${(e as Error).message}` });
+      this.messages.push({ kind: 'error', text: t('Speichern fehlgeschlagen: {0}', (e as Error).message) });
     } finally {
       this.setState({ saving: false });
       this.refresh();

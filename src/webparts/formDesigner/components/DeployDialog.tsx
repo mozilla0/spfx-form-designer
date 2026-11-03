@@ -4,6 +4,7 @@ import { PANEL_COMPONENT_ID, RUNTIME_COMPONENT_ID } from '../../../common/consta
 import { displayModeOf, IFormBackup, IFormDefinition, IRuntimeProperties } from '../../../common/model';
 import { checkScriptSyntax } from '../../../common/scriptEngine';
 import { ContentTypeFormUpdate, IContentTypeInfo, SpService } from '../../../common/spService';
+import { t } from '../../../common/i18n';
 
 export interface IDeployDialogProps {
   sp: SpService;
@@ -49,7 +50,7 @@ export const DeployDialog: React.FC<IDeployDialogProps> = (p) => {
   const canStart = phase === 'idle' && !noneSelected && (!foreign || replaceForeign);
 
   const run = async (): Promise<void> => {
-    const labels = ['Formular-Skript prüfen', 'Bisherige Formularkonfiguration sichern', 'Formulardefinition veröffentlichen', 'Runtime mit dem Inhaltstyp verknüpfen', usesOverlay ? 'Panel-Erweiterung auf der Liste registrieren' : 'Panel-Erweiterung von der Liste entfernen'];
+    const labels = [t('Formular-Skript prüfen'), t('Bisherige Formularkonfiguration sichern'), t('Formulardefinition veröffentlichen'), t('Runtime mit dem Inhaltstyp verknüpfen'), usesOverlay ? t('Panel-Erweiterung auf der Liste registrieren') : t('Panel-Erweiterung von der Liste entfernen')];
     let current: IStep[] = labels.map((label) => ({ label, state: 'pending' as StepState }));
     const mark = (i: number, state: StepState): void => {
       current = current.map((s, idx) => (idx === i ? { ...s, state } : s));
@@ -63,7 +64,7 @@ export const DeployDialog: React.FC<IDeployDialogProps> = (p) => {
       mark(i, 'running');
       const syntax = checkScriptSyntax(p.definition.script);
       if (syntax) {
-        throw new Error(`Das Formular-Skript enthält einen Syntaxfehler: ${syntax}`);
+        throw new Error(t('Das Formular-Skript enthält einen Syntaxfehler: {0}', syntax));
       }
       mark(i++, 'done');
 
@@ -158,26 +159,26 @@ export const DeployDialog: React.FC<IDeployDialogProps> = (p) => {
       hidden={false}
       onDismiss={phase === 'running' ? undefined : p.onDismiss}
       minWidth={520}
-      dialogContentProps={{ type: DialogType.normal, title: 'Als List Form Customizer bereitstellen', subText: `Liste «${p.listTitle}» · Inhaltstyp «${ct.name}»` }}
+      dialogContentProps={{ type: DialogType.normal, title: t('Als List Form Customizer bereitstellen'), subText: t('Liste «{0}» · Inhaltstyp «{1}»', p.listTitle, ct.name) }}
       modalProps={{ isBlocking: phase === 'running' }}
     >
       <Stack tokens={{ childrenGap: 12 }}>
-        <Text variant="mediumPlus" styles={{ root: { fontWeight: 600 } }}>Formulare ersetzen</Text>
+        <Text variant="mediumPlus" styles={{ root: { fontWeight: 600 } }}>{t('Formulare ersetzen')}</Text>
         <Stack horizontal tokens={{ childrenGap: 20 }}>
-          <Checkbox label="Neu" checked={forms.new} disabled={phase === 'running'} onChange={(_, c) => setForms({ ...forms, new: !!c })} />
-          <Checkbox label="Bearbeiten" checked={forms.edit} disabled={phase === 'running'} onChange={(_, c) => setForms({ ...forms, edit: !!c })} />
-          <Checkbox label="Anzeigen" checked={forms.display} disabled={phase === 'running'} onChange={(_, c) => setForms({ ...forms, display: !!c })} />
+          <Checkbox label={t('Neu')} checked={forms.new} disabled={phase === 'running'} onChange={(_, c) => setForms({ ...forms, new: !!c })} />
+          <Checkbox label={t('Bearbeiten')} checked={forms.edit} disabled={phase === 'running'} onChange={(_, c) => setForms({ ...forms, edit: !!c })} />
+          <Checkbox label={t('Anzeigen')} checked={forms.display} disabled={phase === 'running'} onChange={(_, c) => setForms({ ...forms, display: !!c })} />
         </Stack>
 
         {foreign && phase === 'idle' && (
           <MessageBar messageBarType={MessageBarType.warning}>
-            Am Inhaltstyp hängt bereits ein anderer Form Customizer. Er wird vor dem Ersetzen gesichert und lässt sich später wiederherstellen.
-            <Checkbox label="Bestehenden Form Customizer ersetzen" checked={replaceForeign} onChange={(_, c) => setReplaceForeign(!!c)} styles={{ root: { marginTop: 8 } }} />
+            {t('Am Inhaltstyp hängt bereits ein anderer Form Customizer. Er wird vor dem Ersetzen gesichert und lässt sich später wiederherstellen.')}
+            <Checkbox label={t('Bestehenden Form Customizer ersetzen')} checked={replaceForeign} onChange={(_, c) => setReplaceForeign(!!c)} styles={{ root: { marginTop: 8 } }} />
           </MessageBar>
         )}
         {phase === 'idle' && (
           <MessageBar messageBarType={MessageBarType.info}>
-            Ist auf der Liste ein Power-Apps-Formular aktiv, in den Listeneinstellungen unter «Formulareinstellungen» auf «Standard-SharePoint-Formular» umstellen. Die Power App bleibt dabei erhalten.
+            {t('Ist auf der Liste ein Power-Apps-Formular aktiv, in den Listeneinstellungen unter «Formulareinstellungen» auf «Standard-SharePoint-Formular» umstellen. Die Power App bleibt dabei erhalten.')}
           </MessageBar>
         )}
 
@@ -192,15 +193,15 @@ export const DeployDialog: React.FC<IDeployDialogProps> = (p) => {
           </Stack>
         )}
 
-        {phase === 'done' && <MessageBar messageBarType={MessageBarType.success}>Bereitgestellt. Die Liste öffnet ab sofort die neuen Formulare.</MessageBar>}
-        {phase === 'restored' && <MessageBar messageBarType={MessageBarType.success}>Die vorherige Formularkonfiguration ist wiederhergestellt.</MessageBar>}
+        {phase === 'done' && <MessageBar messageBarType={MessageBarType.success}>{t('Bereitgestellt. Die Liste öffnet ab sofort die neuen Formulare.')}</MessageBar>}
+        {phase === 'restored' && <MessageBar messageBarType={MessageBarType.success}>{t('Die vorherige Formularkonfiguration ist wiederhergestellt.')}</MessageBar>}
         {error && <MessageBar messageBarType={MessageBarType.error}>{error}</MessageBar>}
-        {noneSelected && phase === 'idle' && <Text styles={{ root: { color: '#a4262c' } }}>Mindestens ein Formular auswählen.</Text>}
+        {noneSelected && phase === 'idle' && <Text styles={{ root: { color: '#a4262c' } }}>{t('Mindestens ein Formular auswählen.')}</Text>}
       </Stack>
       <DialogFooter>
-        {(ours || phase === 'done') && phase !== 'running' && phase !== 'restored' && <DefaultButton text="Zurücksetzen" onClick={() => restore().catch(() => undefined)} />}
-        <DefaultButton text={phase === 'done' || phase === 'restored' ? 'Schliessen' : 'Abbrechen'} disabled={phase === 'running'} onClick={p.onDismiss} />
-        {phase === 'idle' && <PrimaryButton text="Jetzt bereitstellen" disabled={!canStart} onClick={() => run().catch(() => undefined)} />}
+        {(ours || phase === 'done') && phase !== 'running' && phase !== 'restored' && <DefaultButton text={t('Zurücksetzen')} onClick={() => restore().catch(() => undefined)} />}
+        <DefaultButton text={phase === 'done' || phase === 'restored' ? t('Schliessen') : t('Abbrechen')} disabled={phase === 'running'} onClick={p.onDismiss} />
+        {phase === 'idle' && <PrimaryButton text={t('Jetzt bereitstellen')} disabled={!canStart} onClick={() => run().catch(() => undefined)} />}
       </DialogFooter>
     </Dialog>
   );

@@ -28,11 +28,35 @@ Alle drei liegen im selben Paket (`form-designer.sppkg`), damit sie immer dassel
 - Formular-Skript mit `form`-API (siehe unten)
 - Vorschau mit ausgeführtem Skript, optional mit einem bestehenden Element
 - Darstellung je Formulartyp: Panel, Dialog oder ganze Seite, mit einstellbarer Breite
+- Mehrsprachig: Oberfläche auf Deutsch und Englisch, Formularinhalte übersetzbar
 - Bereitstellung mit Sicherung der bisherigen Konfiguration und «Zurücksetzen»
 
 ### Unterstützte Spaltentypen
 
-Einzelne und mehrere Textzeilen, Zahl und Währung, Auswahl, Mehrfachauswahl, Ja/Nein, Datum, Datum mit Uhrzeit, Person (einzeln), Nachschlagen (einzeln). Andere Typen werden angezeigt, aber noch nicht bearbeitet.
+| Spaltentyp | Bearbeitung | Wert im Formular-Skript |
+|---|---|---|
+| Einzelne/mehrere Textzeilen | Textfeld | `'Text'` |
+| Zahl, Währung | Zahlenfeld | `'42'` (Text der Eingabe) |
+| Auswahl / Mehrfachauswahl | Auswahlliste | `'Offen'` / `['A', 'B']` |
+| Ja/Nein | Kontrollkästchen | `true` / `false` |
+| Datum / Datum und Uhrzeit | Datumsauswahl (+ Uhrzeit) | `'2026-11-20'` / `'2026-11-20T14:30'` |
+| Person (einzeln/mehrere) | Personenauswahl | `{ id, title, email }` / Array davon |
+| Nachschlagen (einzeln/mehrere) | Auswahlliste | `{ id, title }` / Array davon |
+| Verwaltete Metadaten (einzeln/mehrere) | Begriffsauswahl mit Suche | `{ termGuid, label }` / Array davon |
+| Link oder Bild | URL und Beschreibung | `{ url, description }` |
+| Berechnet | nur Anzeige | `'Text'` (formatiert von SharePoint) |
+
+Anlagen, Ort, Bild- und Taxonomie-Spalten mit eigener Benutzeroberfläche (z. B. «Bild» als Dateiupload) werden angezeigt, aber noch nicht bearbeitet.
+
+Verwaltete Metadaten und Links werden über `ValidateUpdateListItem` gespeichert; beim Speichern entsteht dadurch je nach Versionierung eine zusätzliche Version.
+
+## Mehrsprachigkeit
+
+**Oberfläche:** Designer, Formulare, Panel, Dialog und alle Meldungen erscheinen auf Deutsch oder Englisch – je nach Sprache der SharePoint-Seite (Deutsch für alle `de-*`-Kulturen, sonst Englisch). Datumswerte werden im Format der Kultur angezeigt und eingegeben, z. B. `03.11.2026` (de-CH) oder `11/03/2026` (en-US).
+
+**Formularinhalte:** In der Ansicht «Übersetzungen» des Designers lassen sich Titel, Untertitel, Tabs, Abschnitte, Feldbezeichnungen, Hilfetexte und eigene Fehlermeldungen übersetzen. Dort wird auch festgelegt, in welcher Sprache die Texte erfasst sind. Fehlt eine Übersetzung, erscheint der erfasste Text. In der Vorschau lässt sich die Sprache umschalten.
+
+Technisch sind die deutschen Texte zugleich die Schlüssel (`t('Speichern')`), die englischen stehen in `src/common/i18n.en.ts`. Ein Unit-Test prüft, dass zu jedem Text eine Übersetzung existiert.
 
 ## Kopfbereich
 
@@ -141,5 +165,6 @@ Für `npm run start` in `config/serve.json` den Tenant und die Liste eintragen.
 - `addWorkdays` berücksichtigt keine Feiertage.
 - Datumswerte werden in der Zeitzone des Browsers dargestellt.
 - Personen- und Nachschlagefelder mit Mehrfachauswahl, URL-, Taxonomie- und Anlagenfelder sind noch nicht editierbar.
-- Die Benutzeroberfläche ist derzeit nur auf Deutsch.
+- Die Oberfläche unterstützt Deutsch und Englisch; das Diagnoseprotokoll in der Konsole ist deutsch.
+- Begriffe aus verwalteten Metadaten werden bis zu sechs Ebenen tief geladen.
 - Formular-Skript und Formeln verwenden `new Function`. Sollte SharePoint Online `unsafe-eval` per Content Security Policy unterbinden, braucht es dafür eine Alternative.

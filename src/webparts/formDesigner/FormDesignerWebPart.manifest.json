@@ -12,8 +12,8 @@
   "preconfiguredEntries": [{
     "groupId": "5c03119e-3074-46fd-976b-c60198311f70",
     "group": { "default": "Advanced" },
-    "title": { "default": "Form Designer", "de-DE": "Form Designer" },
-    "description": { "default": "WYSIWYG-Designer für SharePoint-Listenformulare", "de-DE": "WYSIWYG-Designer für SharePoint-Listenformulare" },
+    "title": { "default": "Form Designer" },
+    "description": { "default": "WYSIWYG designer for SharePoint list forms", "de-DE": "WYSIWYG-Designer für SharePoint-Listenformulare", "de-CH": "WYSIWYG-Designer für SharePoint-Listenformulare" },
     "officeFabricIconFontName": "FormLibrary",
     "properties": {}
   }]

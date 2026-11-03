@@ -9,6 +9,7 @@ import { panelCssWidth } from '../../common/panelSize';
 import { IContentTypeInfo, SpService } from '../../common/spService';
 import { ICurrentUser } from '../../common/spTypes';
 import { IListFormConfig, isOverlayOpen, openFormOverlay } from '../../common/components/FormOverlay';
+import { setCulture } from '../../common/i18n';
 
 export interface IFormDesignerPanelCommandSetProperties {}
 
@@ -51,6 +52,7 @@ export default class FormDesignerPanelCommandSet extends BaseListViewCommandSet<
 
   public onInit(): Promise<void> {
     const ctx = this.context.pageContext;
+    setCulture(ctx.cultureInfo.currentUICultureName);
     const list = ctx.list;
     if (!list) {
       return Promise.resolve();

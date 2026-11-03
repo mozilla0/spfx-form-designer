@@ -7,9 +7,24 @@ import {
   FieldValues,
   ILookupValue,
   ISpField,
+  ITermValue,
+  IUrlValue,
   IUserValue
 } from './spTypes';
 import { toLocalDate, pad } from './dateUtils';
+import { getCulture } from './i18n';
+
+/** Begriff aus dem Ausdrucksspeicher mit Pfad zur Unterscheidung gleichnamiger Begriffe. */
+export interface ITermOption {
+  termGuid: string;
+  label: string;
+  path: string;
+}
+
+const EMPTY_GUID = '00000000-0000-0000-0000-000000000000';
+
+/** Spaltentypen, die per ValidateUpdateListItem geschrieben werden. */
+const VALIDATE_KINDS: FieldKind[] = ['taxonomy', 'taxonomymulti', 'url'];
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
 
@@ -62,9 +77,19 @@ function mapKind(f: any): FieldKind {
     case 'DateTime':
       return f.DisplayFormat === 1 ? 'datetime' : 'date';
     case 'User':
-      return f.AllowMultipleValues ? 'unsupported' : 'user';
+    case 'UserMulti':
+      return f.AllowMultipleValues || f.TypeAsString === 'UserMulti' ? 'usermulti' : 'user';
     case 'Lookup':
-      return f.AllowMultipleValues ? 'unsupported' : 'lookup';
+    case 'LookupMulti':
+      return f.AllowMultipleValues || f.TypeAsString === 'LookupMulti' ? 'lookupmulti' : 'lookup';
+    case 'TaxonomyFieldType':
+      return 'taxonomy';
+    case 'TaxonomyFieldTypeMulti':
+      return 'taxonomymulti';
+    case 'URL':
+      return 'url';
+    case 'Calculated':
+      return 'calculated';
     default:
       return 'unsupported';
   }
@@ -118,7 +143,7 @@ export class SpService {
     );
     return (r.value as any[])
       .filter((f) => EXCLUDED_FIELDS.indexOf(f.InternalName) < 0)
-      .filter((f) => !f.ReadOnlyField || f.InternalName === 'Title')
+      .filter((f) => !f.ReadOnlyField || f.InternalName === 'Title' || f.TypeAsString === 'Calculated')
       .map((f) => ({
         id: f.Id,
         internalName: f.InternalName,
@@ -130,6 +155,9 @@ export class SpService {
         choices: (f.Choices as string[]) || [],
         lookupListId: f.LookupList ? String(f.LookupList).replace(/[{}]/g, '') : undefined,
         lookupField: f.LookupField || 'Title',
+        termSetId: f.TermSetId ? String(f.TermSetId) : undefined,
+        anchorId: f.AnchorId && String(f.AnchorId) !== EMPTY_GUID ? String(f.AnchorId) : undefined,
+        urlFormat: f.TypeAsString === 'URL' ? (f.DisplayFormat === 1 ? 'image' : 'hyperlink') : undefined,
         description: f.Description || ''
       }));
   }
@@ -178,48 +206,123 @@ export class SpService {
   public async getItem(listId: string, itemId: number, fields: ISpField[]): Promise<FieldValues> {
     const select: string[] = ['Id'];
     const expand: string[] = [];
+    let needsText = false;
     fields.forEach((f) => {
-      if (f.kind === 'user') {
+      if (f.kind === 'user' || f.kind === 'usermulti') {
         select.push(`${f.internalName}/Id`, `${f.internalName}/Title`, `${f.internalName}/EMail`);
         expand.push(f.internalName);
-      } else if (f.kind === 'lookup') {
+      } else if (f.kind === 'lookup' || f.kind === 'lookupmulti') {
         select.push(`${f.internalName}/Id`, `${f.internalName}/${f.lookupField || 'Title'}`);
         expand.push(f.internalName);
       } else if (f.kind !== 'unsupported') {
         select.push(f.internalName);
       }
+      if (f.kind === 'taxonomy' || f.kind === 'taxonomymulti' || f.kind === 'calculated') {
+        needsText = true;
+      }
     });
     const query = `$select=${select.join(',')}${expand.length ? `&$expand=${expand.join(',')}` : ''}`;
     const item = await this.get(`/_api/web/lists(guid'${listId}')/items(${itemId})?${query}`);
+    const texts: Record<string, string> = needsText ? await this.get(`/_api/web/lists(guid'${listId}')/items(${itemId})/FieldValuesAsText`) : {};
     const values: FieldValues = {};
     fields.forEach((f) => {
-      values[f.internalName] = this.fromSp(f, item[f.internalName]);
+      const text = texts[f.internalName] !== undefined ? texts[f.internalName] : texts[f.internalName.replace(/_/g, '_x005f_')];
+      values[f.internalName] = this.fromSp(f, item[f.internalName], text);
     });
     return values;
   }
 
   public async saveItem(listId: string, itemId: number | undefined, fields: ISpField[], values: FieldValues, onlyFields?: string[]): Promise<number> {
     const payload: Record<string, unknown> = {};
+    const formValues: Array<{ FieldName: string; FieldValue: string }> = [];
     fields.forEach((f) => {
-      if (f.readOnly || f.kind === 'unsupported') {
+      if (f.readOnly || f.kind === 'unsupported' || f.kind === 'calculated') {
         return;
       }
       if (onlyFields && onlyFields.indexOf(f.internalName) < 0) {
         return;
       }
       const v = values[f.internalName];
-      if (f.kind === 'user' || f.kind === 'lookup') {
-        payload[`${f.internalName}Id`] = v && typeof v === 'object' && !Array.isArray(v) ? v.id : null;
+      if (VALIDATE_KINDS.indexOf(f.kind) >= 0) {
+        formValues.push({ FieldName: f.internalName, FieldValue: this.toFormValue(f, v) });
+      } else if (f.kind === 'user' || f.kind === 'lookup') {
+        payload[`${f.internalName}Id`] = v && typeof v === 'object' && !Array.isArray(v) && 'id' in v ? v.id : null;
+      } else if (f.kind === 'usermulti' || f.kind === 'lookupmulti') {
+        payload[`${f.internalName}Id`] = Array.isArray(v) ? (v as Array<IUserValue | ILookupValue>).map((x) => x.id) : [];
       } else {
         payload[f.internalName] = this.toSp(f, v);
       }
     });
-    if (itemId) {
-      await this.post(`/_api/web/lists(guid'${listId}')/items(${itemId})`, payload, { 'X-HTTP-Method': 'MERGE', 'IF-MATCH': '*' });
-      return itemId;
+    let id = itemId;
+    if (id) {
+      if (Object.keys(payload).length) {
+        await this.post(`/_api/web/lists(guid'${listId}')/items(${id})`, payload, { 'X-HTTP-Method': 'MERGE', 'IF-MATCH': '*' });
+      }
+    } else {
+      const created = await this.post(`/_api/web/lists(guid'${listId}')/items`, payload);
+      id = created.Id as number;
     }
-    const created = await this.post(`/_api/web/lists(guid'${listId}')/items`, payload);
-    return created.Id as number;
+    if (formValues.length) {
+      const r = await this.post(`/_api/web/lists(guid'${listId}')/items(${id})/ValidateUpdateListItem`, { formValues, bNewDocumentUpdate: false });
+      const failed = ((r && r.value) || []).filter((x: any) => x.HasException);
+      if (failed.length) {
+        throw new Error(failed.map((x: any) => `${x.FieldName}: ${x.ErrorMessage}`).join('; '));
+      }
+    }
+    return id as number;
+  }
+
+  // ---------- Verwaltete Metadaten ----------
+
+  private termCache: Record<string, ITermOption[]> = {};
+
+  /** Lädt die Begriffe eines Ausdruckssatzes (optional unterhalb eines Ankerbegriffs). */
+  public async getTerms(field: ISpField): Promise<ITermOption[]> {
+    if (!field.termSetId) {
+      return [];
+    }
+    const cacheKey = `${field.termSetId}|${field.anchorId || ''}`;
+    if (this.termCache[cacheKey]) {
+      return this.termCache[cacheKey];
+    }
+    const lang = getCulture().toLowerCase();
+    const labelOf = (term: any): string => {
+      const labels: any[] = term.labels || [];
+      const exact = labels.filter((l) => String(l.languageTag || '').toLowerCase() === lang)[0];
+      const sameLang = labels.filter((l) => String(l.languageTag || '').toLowerCase().split('-')[0] === lang.split('-')[0])[0];
+      const def = labels.filter((l) => l.isDefault)[0];
+      return ((exact || sameLang || def || labels[0] || {}).name as string) || '';
+    };
+    const base = `/_api/v2.1/termStore/sets/${field.termSetId}`;
+    const fetchAll = async (path: string): Promise<any[]> => {
+      const out: any[] = [];
+      let next: string | undefined = `${path}${path.indexOf('?') >= 0 ? '&' : '?'}$top=500`;
+      while (next) {
+        const res = await this.http.get(next.indexOf('http') === 0 ? next : this.url(next), SPHttpClient.configurations.v1, { headers: { Accept: 'application/json' } });
+        if (!res.ok) {
+          throw new Error(await this.errorText(res));
+        }
+        const body = await res.json();
+        (body.value || []).forEach((x: any) => out.push(x));
+        next = body['@odata.nextLink'];
+      }
+      return out;
+    };
+    const result: ITermOption[] = [];
+    const walk = async (path: string, parentPath: string, depth: number): Promise<void> => {
+      const terms = await fetchAll(path);
+      for (const term of terms) {
+        const label = labelOf(term);
+        const fullPath = parentPath ? `${parentPath} › ${label}` : label;
+        result.push({ termGuid: String(term.id), label, path: fullPath });
+        if (depth < 6 && term.childrenCount !== 0) {
+          await walk(`${base}/terms/${term.id}/children`, fullPath, depth + 1);
+        }
+      }
+    };
+    await walk(field.anchorId ? `${base}/terms/${field.anchorId}/children` : `${base}/children`, '', 0);
+    this.termCache[cacheKey] = result;
+    return result;
   }
 
   // ---------- Personen und Nachschlagewerte ----------
@@ -370,10 +473,30 @@ export class SpService {
     }
   }
 
-  private fromSp(f: ISpField, raw: any): FieldValue {
-    if (raw === undefined || raw === null) {
-      return f.kind === 'multichoice' ? [] : f.kind === 'boolean' ? false : f.kind === 'user' || f.kind === 'lookup' ? null : '';
+  private fromSp(f: ISpField, raw: any, text?: string): FieldValue {
+    if (f.kind === 'calculated') {
+      return text !== undefined ? text : raw === undefined || raw === null ? '' : String(raw);
     }
+    if (raw === undefined || raw === null) {
+      switch (f.kind) {
+        case 'multichoice':
+        case 'usermulti':
+        case 'lookupmulti':
+        case 'taxonomymulti':
+          return [];
+        case 'boolean':
+          return false;
+        case 'user':
+        case 'lookup':
+        case 'taxonomy':
+          return null;
+        case 'url':
+          return { url: '', description: '' };
+        default:
+          return '';
+      }
+    }
+    const list = (x: any): any[] => (Array.isArray(x) ? x : Array.isArray(x && x.results) ? x.results : []);
     switch (f.kind) {
       case 'number':
         return String(raw);
@@ -391,11 +514,48 @@ export class SpService {
       }
       case 'user':
         return raw.Id ? { id: raw.Id, title: raw.Title, email: raw.EMail } : null;
+      case 'usermulti':
+        return list(raw).filter((u) => u && u.Id).map((u) => ({ id: u.Id, title: u.Title, email: u.EMail }));
       case 'lookup':
         return raw.Id ? { id: raw.Id, title: String(raw[f.lookupField || 'Title'] ?? '') } : null;
+      case 'lookupmulti':
+        return list(raw).filter((l) => l && l.Id).map((l) => ({ id: l.Id, title: String(l[f.lookupField || 'Title'] ?? '') }));
+      case 'taxonomy': {
+        if (!raw.TermGuid) {
+          return null;
+        }
+        return { termGuid: String(raw.TermGuid), label: text !== undefined && text !== '' ? text : String(raw.Label || '') } as ITermValue;
+      }
+      case 'taxonomymulti': {
+        const labels = text ? text.split(';').map((x) => x.trim()) : [];
+        return list(raw)
+          .filter((x) => x && x.TermGuid)
+          .map((x, i) => ({ termGuid: String(x.TermGuid), label: labels[i] || String(x.Label || '') })) as ITermValue[];
+      }
+      case 'url':
+        return { url: String(raw.Url || ''), description: String(raw.Description || '') } as IUrlValue;
       default:
         return typeof raw === 'string' ? raw : String(raw);
     }
+  }
+
+  /** Wert im Format von ValidateUpdateListItem. */
+  private toFormValue(f: ISpField, v: FieldValue): string {
+    if (f.kind === 'taxonomy') {
+      const term = v && typeof v === 'object' && !Array.isArray(v) && 'termGuid' in v ? (v as ITermValue) : undefined;
+      return term ? `${term.label}|${term.termGuid}` : '';
+    }
+    if (f.kind === 'taxonomymulti') {
+      return Array.isArray(v) ? (v as ITermValue[]).map((x) => `${x.label}|${x.termGuid}`).join(';') : '';
+    }
+    if (f.kind === 'url') {
+      const u = v && typeof v === 'object' && !Array.isArray(v) && 'url' in v ? (v as IUrlValue) : undefined;
+      if (!u || !u.url) {
+        return '';
+      }
+      return `${u.url.replace(/,/g, ',,')}, ${u.description || u.url}`;
+    }
+    return '';
   }
 
   private toSp(f: ISpField, v: FieldValue): unknown {

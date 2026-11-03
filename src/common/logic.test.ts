@@ -7,6 +7,15 @@ import { checkScriptSyntax, FormScriptHost, IScriptHostBridge } from './scriptEn
 import { panelCssWidth } from './panelSize';
 import { parseFormUrl } from './formUrl';
 import { isHexColor, textColorOn } from './components/FormHeader';
+import { setCulture, t } from './i18n';
+import { en } from './i18n.en';
+import { formatDate, parseDate } from './dateUtils';
+import { isEmptyValue, valueToText } from './spTypes';
+import { localizeDefinition } from './translate';
+import { createDefinition } from './model';
+/* eslint-disable @typescript-eslint/no-require-imports, @typescript-eslint/no-explicit-any */
+const fs: any = require('fs');
+const path: any = require('path');
 
 function field(kind: ISpField['kind'], name: string = 'F'): ISpField {
   return { id: name, internalName: name, title: name, typeAsString: kind, kind, required: false, readOnly: false, choices: ['Offen', 'Erledigt'], description: '' };
@@ -146,5 +155,74 @@ describe('FormHeader', () => {
     expect(textColorOn('#ffd335')).toBe('#1b1a19');
     expect(isHexColor('#12ab9F')).toBe(true);
     expect(isHexColor('blau')).toBe(false);
+  });
+});
+
+describe('i18n', () => {
+  afterEach(() => setCulture('de-CH'));
+
+  it('übersetzt mit Platzhaltern', () => {
+    setCulture('en-US');
+    expect(t('Mindestens {0} Zeichen eingeben.', 5)).toBe('Enter at least 5 characters.');
+    setCulture('de-CH');
+    expect(t('Mindestens {0} Zeichen eingeben.', 5)).toBe('Mindestens 5 Zeichen eingeben.');
+  });
+
+  it('hat für jeden Text im Quellcode eine englische Übersetzung', () => {
+    const missing: string[] = [];
+    const pattern = /\bt\(\s*(?:'((?:[^'\\]|\\.)*)'|"((?:[^"\\]|\\.)*)")/g;
+    const walk = (dir: string): void => {
+      fs.readdirSync(dir).forEach((name: string) => {
+        const full = path.join(dir, name);
+        if (fs.statSync(full).isDirectory()) {
+          walk(full);
+        } else if (/\.tsx?$/.test(name) && !/\.test\.ts$/.test(name)) {
+          const src = fs.readFileSync(full, 'utf8');
+          let m: RegExpExecArray | null;
+          while ((m = pattern.exec(src))) {
+            const key = (m[1] !== undefined ? m[1] : m[2]).replace(/\\'/g, "'").replace(/\\"/g, '"');
+            if (!en[key]) {
+              missing.push(`${name}: ${key}`);
+            }
+          }
+        }
+      });
+    };
+    walk(path.resolve((process as any).cwd(), 'src'));
+    expect(missing).toEqual([]);
+  });
+
+  it('formatiert und liest Datumswerte je Kultur', () => {
+    setCulture('de-CH');
+    expect(formatDate('2026-11-03')).toBe('03.11.2026');
+    expect(toIsoDate(parseDate('3.11.26') as Date)).toBe('2026-11-03');
+    setCulture('en-US');
+    expect(formatDate('2026-11-03')).toBe('11/03/2026');
+    expect(toIsoDate(parseDate('11/3/2026') as Date)).toBe('2026-11-03');
+    expect(parseDate('31/31/2026')).toBeNull();
+  });
+});
+
+describe('neue Spaltentypen', () => {
+  it('stellt Mehrfachwerte, Begriffe und Links als Text dar', () => {
+    expect(valueToText([{ id: 1, title: 'A' }, { id: 2, title: 'B' }])).toBe('A, B');
+    expect(valueToText({ termGuid: 'x', label: 'Zürich' })).toBe('Zürich');
+    expect(valueToText({ url: 'https://example.com', description: 'Beispiel' })).toBe('Beispiel');
+    expect(isEmptyValue({ url: '', description: '' })).toBe(true);
+    expect(isEmptyValue([])).toBe(true);
+  });
+});
+
+describe('Übersetzung der Formularinhalte', () => {
+  it('ersetzt Texte mit vorhandener Übersetzung', () => {
+    const def = createDefinition(['Title']);
+    def.titles.new = 'Neuer Auftrag';
+    def.baseLanguage = 'de';
+    def.translations = { en: { 'title.new': 'New order', [`tab.${def.tabs[0].id}`]: 'General', 'field.Title.label': '' } };
+    const localized = localizeDefinition(def, 'en');
+    expect(localized.titles.new).toBe('New order');
+    expect(localized.tabs[0].label).toBe('General');
+    expect(localized.fields.Title.label).toBeUndefined();
+    expect(localizeDefinition(def, 'de').titles.new).toBe('Neuer Auftrag');
   });
 });

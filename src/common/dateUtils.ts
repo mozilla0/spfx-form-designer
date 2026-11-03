@@ -1,4 +1,4 @@
-const WEEKDAYS: string[] = ['So', 'Mo', 'Di', 'Mi', 'Do', 'Fr', 'Sa'];
+import { getCulture } from './i18n';
 
 function pad2(n: number): string {
   return n < 10 ? `0${n}` : String(n);
@@ -55,17 +55,80 @@ export function toIsoDate(d: unknown): string {
   return `${x.getFullYear()}-${pad2(x.getMonth() + 1)}-${pad2(x.getDate())}`;
 }
 
+type DatePart = 'day' | 'month' | 'year';
+
+/** Reihenfolge von Tag, Monat und Jahr in der aktuellen Kultur. */
+function partOrder(): DatePart[] {
+  try {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const fmt = new Intl.DateTimeFormat(getCulture(), { day: '2-digit', month: '2-digit', year: 'numeric' }) as any;
+    const parts: Array<{ type: string }> = fmt.formatToParts(new Date(2000, 10, 22));
+    const order = parts.filter((p) => p.type === 'day' || p.type === 'month' || p.type === 'year').map((p) => p.type as DatePart);
+    return order.length === 3 ? order : ['day', 'month', 'year'];
+  } catch {
+    return ['day', 'month', 'year'];
+  }
+}
+
+/** Datum im Format der Kultur, z. B. 03.11.2026 (de-CH) oder 11/03/2026 (en-US). */
 export function formatDate(d: unknown): string {
   const x = toLocalDate(d);
-  return `${pad2(x.getDate())}.${pad2(x.getMonth() + 1)}.${x.getFullYear()}`;
+  try {
+    return new Intl.DateTimeFormat(getCulture(), { day: '2-digit', month: '2-digit', year: 'numeric' }).format(x);
+  } catch {
+    return `${pad2(x.getDate())}.${pad2(x.getMonth() + 1)}.${x.getFullYear()}`;
+  }
 }
 
 export function formatDateWithWeekday(d: unknown): string {
   const x = toLocalDate(d);
-  return `${WEEKDAYS[x.getDay()]}, ${formatDate(x)}`;
+  let weekday = '';
+  try {
+    weekday = new Intl.DateTimeFormat(getCulture(), { weekday: 'short' }).format(x);
+  } catch {
+    weekday = '';
+  }
+  return weekday ? `${weekday}, ${formatDate(x)}` : formatDate(x);
 }
 
-/** 'TT.MM.JJJJ' oder 'T.M.JJ' → Date; ungültig → null. */
+/** Platzhalter für die Datumseingabe, z. B. «TT.MM.JJJJ» oder «MM/DD/YYYY». */
+export function datePlaceholder(): string {
+  const de = /^de\b/i.test(getCulture());
+  const names: Record<DatePart, string> = de ? { day: 'TT', month: 'MM', year: 'JJJJ' } : { day: 'DD', month: 'MM', year: 'YYYY' };
+  const sep = formatDate(new Date(2000, 10, 22)).replace(/[0-9]/g, '').charAt(0) || '.';
+  return partOrder().map((p) => names[p]).join(sep);
+}
+
+/** Liest ein Datum in der Reihenfolge der Kultur (Trennzeichen . / -) oder als JJJJ-MM-TT. */
+export function parseDate(s: string): Date | null {
+  const text = (s || '').trim();
+  const iso = /^(\d{4})-(\d{1,2})-(\d{1,2})$/.exec(text);
+  let day: number;
+  let month: number;
+  let year: number;
+  if (iso) {
+    year = Number(iso[1]);
+    month = Number(iso[2]);
+    day = Number(iso[3]);
+  } else {
+    const m = /^(\d{1,4})[./-](\d{1,2})[./-](\d{1,4})$/.exec(text);
+    if (!m) {
+      return null;
+    }
+    const values = [Number(m[1]), Number(m[2]), Number(m[3])];
+    const order = partOrder();
+    day = values[order.indexOf('day')];
+    month = values[order.indexOf('month')];
+    year = values[order.indexOf('year')];
+  }
+  if (year < 100) {
+    year += 2000;
+  }
+  const d = new Date(year, month - 1, day);
+  return isNaN(d.getTime()) || d.getMonth() !== month - 1 ? null : d;
+}
+
+/** Abwärtskompatibel: TT.MM.JJJJ. */
 export function parseSwissDate(s: string): Date | null {
   const m = /^\s*(\d{1,2})\.(\d{1,2})\.(\d{2}|\d{4})\s*$/.exec(s || '');
   if (!m) {

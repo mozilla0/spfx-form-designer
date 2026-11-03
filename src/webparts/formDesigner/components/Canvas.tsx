@@ -4,12 +4,13 @@ import { rectSortingStrategy, SortableContext, useSortable, verticalListSortingS
 import { CSS } from '@dnd-kit/utilities';
 import { DefaultButton } from '@fluentui/react';
 import { FormMode, IFormDefinition, ISection } from '../../../common/model';
-import { FIELD_KIND_LABELS, ISpField } from '../../../common/spTypes';
+import { fieldKindLabel, ISpField } from '../../../common/spTypes';
 import { hasValidationRules } from '../../../common/validation';
 import { panelPreviewWidth } from '../../../common/panelSize';
 import { FormHeader } from '../../../common/components/FormHeader';
 import { Selection } from './designerState';
 import styles from './FormDesigner.module.scss';
+import { t } from '../../../common/i18n';
 
 export interface ICanvasProps {
   definition: IFormDefinition;
@@ -56,7 +57,7 @@ const FieldCard: React.FC<IFieldCardProps> = ({ name, section, props }) => {
   });
   const selected = !!selection && selection.kind === 'field' && selection.name === name;
   const label = (settings && settings.label) || (field ? field.title : name);
-  const kindLabel = field ? FIELD_KIND_LABELS[field.kind] : 'Spalte fehlt in der Liste';
+  const kindLabel = field ? fieldKindLabel(field.kind) : t('Spalte fehlt in der Liste');
   const required = !!settings && (settings.required || (!!field && field.required));
   const scripted = definition.script.indexOf(`'${name}'`) >= 0 || definition.script.indexOf(`"${name}"`) >= 0;
 
@@ -72,7 +73,7 @@ const FieldCard: React.FC<IFieldCardProps> = ({ name, section, props }) => {
       }}
       {...attributes}
       {...listeners}
-      aria-label={`Feld ${label}. Zum Verschieben Leertaste drücken.`}
+      aria-label={t('Feld {0}. Zum Verschieben Leertaste drücken.', label)}
       onClick={() => onSelect({ kind: 'field', name })}
       onFocus={() => onSelect({ kind: 'field', name })}
     >
@@ -81,10 +82,10 @@ const FieldCard: React.FC<IFieldCardProps> = ({ name, section, props }) => {
         {required && <span className={styles.required}>*</span>}
         <span className={styles.typeLabel}>{kindLabel}</span>
         {scripted && <span className={cx(styles.badge, styles.badgeScript)}>JS</span>}
-        {settings && hasValidationRules(settings) && <span className={cx(styles.badge, styles.badgeRule)}>Prüfung</span>}
-        {settings && settings.defaultValue.mode !== 'none' && <span className={cx(styles.badge, styles.badgeDefault)}>Standardwert</span>}
-        {settings && settings.visibility.operator !== 'always' && <span className={cx(styles.badge, styles.badgeCond)}>Bedingt sichtbar</span>}
-        {settings && settings.readOnly && <span className={styles.badge}>Schreibgeschützt</span>}
+        {settings && hasValidationRules(settings) && <span className={cx(styles.badge, styles.badgeRule)}>{t('Prüfung')}</span>}
+        {settings && settings.defaultValue.mode !== 'none' && <span className={cx(styles.badge, styles.badgeDefault)}>{t('Standardwert')}</span>}
+        {settings && settings.visibility.operator !== 'always' && <span className={cx(styles.badge, styles.badgeCond)}>{t('Bedingt sichtbar')}</span>}
+        {settings && settings.readOnly && <span className={styles.badge}>{t('Schreibgeschützt')}</span>}
       </div>
       {field && field.kind !== 'boolean' && <div className={cx(styles.mockInput, field.kind === 'note' && styles.mockInputTall)} />}
     </div>
@@ -111,16 +112,16 @@ const SectionBlock: React.FC<ISectionProps> = ({ section, props }) => {
       ref={setNodeRef}
       className={cx(styles.section, selected && styles.sectionSelected, props.overId === id && styles.sectionOver)}
       style={{ transform: CSS.Transform.toString(transform), transition, opacity: isDragging ? 0.5 : 1 }}
-      aria-label={section.title || 'Abschnitt'}
+      aria-label={section.title || t('Abschnitt')}
     >
       <div className={styles.sectionHeader}>
         <h3 className={styles.sectionTitle}>
-          <button type="button" ref={setActivatorNodeRef} className={styles.handle} aria-label={`Abschnitt ${section.title} verschieben`} {...attributes} {...listeners}>
+          <button type="button" ref={setActivatorNodeRef} className={styles.handle} aria-label={t('Abschnitt {0} verschieben', section.title)} {...attributes} {...listeners}>
             {GRIP}
           </button>
-          {section.title || 'Abschnitt ohne Titel'}
+          {section.title || t('Abschnitt ohne Titel')}
         </h3>
-        <DefaultButton text="Abschnitt bearbeiten" onClick={() => props.onSelect({ kind: 'section', id: section.id })} styles={{ root: { minWidth: 0, height: 28, padding: '0 8px' } }} />
+        <DefaultButton text={t('Abschnitt bearbeiten')} onClick={() => props.onSelect({ kind: 'section', id: section.id })} styles={{ root: { minWidth: 0, height: 28, padding: '0 8px' } }} />
       </div>
       <SortableContext items={section.fields.map((f) => `field:${f}`)} strategy={rectSortingStrategy}>
         <div
@@ -128,7 +129,7 @@ const SectionBlock: React.FC<ISectionProps> = ({ section, props }) => {
           className={cx(styles.sectionBody, props.overId === bodyId && styles.sectionBodyOver)}
           style={{ gridTemplateColumns: section.columns === 2 ? 'repeat(2, minmax(0, 1fr))' : 'minmax(0, 1fr)' }}
         >
-          {section.fields.length === 0 && <div className={styles.empty}>Leerer Abschnitt – Spalte hierher ziehen oder links mit + einfügen.</div>}
+          {section.fields.length === 0 && <div className={styles.empty}>{t('Leerer Abschnitt – Spalte hierher ziehen oder links mit + einfügen.')}</div>}
           {section.fields.map((name) => (
             <FieldCard key={name} name={name} section={section} props={props} />
           ))}
@@ -157,18 +158,18 @@ export const Canvas: React.FC<ICanvasProps> = (props) => {
       <div className={styles.formSurface} style={{ maxWidth: panelPreviewWidth(definition.layout) || undefined }}>
         <div className={styles.formHeader}>
           <div style={{ flex: '1 1 auto', minWidth: 0 }}>
-            <FormHeader compact title={title || '(Standardtitel)'} subtitle={definition.header ? definition.header.subtitle : undefined} header={definition.header} />
+            <FormHeader compact title={title || t('(Standardtitel)')} subtitle={definition.header ? definition.header.subtitle : undefined} header={definition.header} />
           </div>
-          <DefaultButton text="Titel und Tabs" onClick={() => props.onSelect({ kind: 'form' })} styles={{ root: { flex: 'none' } }} />
+          <DefaultButton text={t('Titel und Tabs')} onClick={() => props.onSelect({ kind: 'form' })} styles={{ root: { flex: 'none' } }} />
         </div>
-        <nav className={styles.tabs} aria-label="Tabs des Formulars">
+        <nav className={styles.tabs} aria-label={t('Tabs des Formulars')}>
           {definition.tabs.map((t) => (
             <TabButton key={t.id} id={t.id} label={t.label} active={t.id === activeTab} over={props.overId === `tab:${t.id}`} onClick={() => props.onTabChange(t.id)} />
           ))}
         </nav>
         <SortableContext items={sections.map((s) => `section:${s.id}`)} strategy={verticalListSortingStrategy}>
           <div className={styles.sections}>
-            {sections.length === 0 && <div className={styles.empty}>Dieser Tab hat noch keinen Abschnitt.</div>}
+            {sections.length === 0 && <div className={styles.empty}>{t('Dieser Tab hat noch keinen Abschnitt.')}</div>}
             {sections.map((s) => (
               <SectionBlock key={s.id} section={s} props={props} />
             ))}

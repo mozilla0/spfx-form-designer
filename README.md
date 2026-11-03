@@ -28,21 +28,45 @@ All three ship in the same package (`form-designer.sppkg`) so they always share 
 - Form script with a `form` API (see below)
 - Preview that runs the form script, optionally with an existing item
 - Display mode per form type: panel, dialog or full page, with configurable width
+- Multilingual: user interface in German and English, translatable form content
 - Deployment with backup of the previous configuration and "Reset"
 
 ### Supported column types
 
-Single and multiple lines of text, number and currency, choice, multi-choice, yes/no, date, date and time, person (single), lookup (single). Other types are displayed but not yet editable.
+| Column type | Editing | Value in the form script |
+|---|---|---|
+| Single/multiple lines of text | Text field | `'Text'` |
+| Number, currency | Number field | `'42'` (input text) |
+| Choice / multiple choice | Dropdown | `'Open'` / `['A', 'B']` |
+| Yes/No | Checkbox | `true` / `false` |
+| Date / date and time | Date picker (+ time) | `'2026-11-20'` / `'2026-11-20T14:30'` |
+| Person (single/multiple) | People picker | `{ id, title, email }` / array of these |
+| Lookup (single/multiple) | Dropdown | `{ id, title }` / array of these |
+| Managed metadata (single/multiple) | Term picker with search | `{ termGuid, label }` / array of these |
+| Hyperlink or picture | URL and description | `{ url, description }` |
+| Calculated | Display only | `'Text'` (formatted by SharePoint) |
+
+Attachments, location, image columns and other types with their own UI (e.g. "Image" as file upload) are displayed but not yet editable.
+
+Managed metadata and hyperlinks are saved via `ValidateUpdateListItem`; depending on versioning settings, saving therefore creates an additional version.
+
+## Multilingual support
+
+**User interface:** the designer, forms, panel, dialog and all messages appear in German or English depending on the language of the SharePoint page (German for all `de-*` cultures, English otherwise). Dates are displayed and entered in the culture's format, e.g. `03.11.2026` (de-CH) or `11/03/2026` (en-US).
+
+**Form content:** in the designer's "Translations" view you can translate titles, subtitle, tabs, sections, field labels, help texts and custom error messages, and set the language in which the texts were entered. If a translation is missing, the entered text is shown. The preview lets you switch languages.
+
+Technically, the German texts double as keys (`t('Speichern')`); the English texts live in `src/common/i18n.en.ts`. A unit test checks that every text has a translation.
 
 ## Header
 
-Under "Titel und Tabs" › "Kopfbereich": style (plain, accent line, coloured band), subtitle with placeholders, Fluent UI icon, logo or image (URL or upload to "Site Assets/FormDesigner/Bilder"), image position and accent colour. On the coloured band the text colour is chosen automatically for contrast.
+Under "Title and tabs" › "Header": style (plain, accent line, coloured band), subtitle with placeholders, Fluent UI icon, logo or image (URL or upload to "Site Assets/FormDesigner/Bilder" (folder name is fixed)), image position and accent colour. On the coloured band the text colour is chosen automatically for contrast.
 
 Microsoft's JSON list form configuration (header/body/footer) only applies to SharePoint's standard form, not to forms rendered by Form Designer.
 
 ## Panel, dialog or full page
 
-For each form type (New, Edit, Display) you choose under "Titel und Tabs" how the form opens from the list view: **panel**, **dialog** (movable and resizable) or **full page**, plus the width of panel and dialog.
+For each form type (New, Edit, Display) you choose under "Title and tabs" how the form opens from the list view: **panel**, **dialog** (movable and resizable) or **full page**, plus the width of panel and dialog.
 
 How it works:
 
@@ -65,7 +89,7 @@ Append a parameter to the list view URL (applies to the browser session). Output
 | `?fdDebug=on` | Log and redirect |
 | `?fdDebug=off` | Back to normal operation |
 
-In diagnostic mode the command bar shows "Form Designer: Diagnose". Clicking it prints the loaded configuration.
+In diagnostic mode the command bar shows "Form Designer: Diagnostics". Clicking it prints the loaded configuration.
 
 ## Where definitions are stored
 
@@ -133,7 +157,7 @@ For `npm run start`, enter your tenant and list in `config/serve.json`.
 1. Upload `form-designer.sppkg` to the app catalog and deploy it.
 2. Add the "Form Designer" app to the site.
 3. Add the "Form Designer" web part to a page for site owners (full width recommended).
-4. Select list and content type, design the form, "Entwurf speichern" (save draft), then "Bereitstellen" (deploy).
+4. Select list and content type, design the form, "Save draft", then "Deploy".
 5. If a Power Apps form is active on the list: List settings › Form settings › "Use the default SharePoint form".
 
 ## Known limitations
@@ -141,5 +165,6 @@ For `npm run start`, enter your tenant and list in `config/serve.json`.
 - `addWorkdays` does not take public holidays into account.
 - Dates are displayed in the browser's time zone.
 - Multi-value person and lookup fields, URL, managed metadata and attachment fields are not yet editable.
-- The user interface is currently German only.
+- The user interface supports German and English; the diagnostic console log is in German.
+- Managed metadata terms are loaded up to six levels deep.
 - Form script and formulas use `new Function`. If SharePoint Online blocks `unsafe-eval` through its Content Security Policy, an alternative will be needed.

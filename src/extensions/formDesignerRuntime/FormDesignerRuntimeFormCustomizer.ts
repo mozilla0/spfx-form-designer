@@ -9,6 +9,7 @@ import { SpService } from '../../common/spService';
 import { FieldValues, ICurrentUser, ISpField } from '../../common/spTypes';
 import { applyPanelWidth, panelCssWidth } from '../../common/panelSize';
 import FormDesignerRuntime, { IFormDesignerRuntimeProps } from './components/FormDesignerRuntime';
+import { setCulture, t } from '../../common/i18n';
 
 const LOG_SOURCE: string = 'FormDesignerRuntimeFormCustomizer';
 
@@ -28,11 +29,12 @@ export default class FormDesignerRuntimeFormCustomizer extends BaseFormCustomize
   private _resetPanelWidth: (() => void) | undefined;
 
   public async onInit(): Promise<void> {
+    setCulture(this.context.pageContext.cultureInfo.currentUICultureName);
     const web = this.context.pageContext.web;
     this._sp = new SpService(this.context.spHttpClient, web.absoluteUrl, web.serverRelativeUrl);
     try {
       if (!this.properties || !this.properties.definitionUrl) {
-        throw new Error('Für dieses Formular ist keine Formulardefinition hinterlegt. Bitte im Form Designer erneut bereitstellen.');
+        throw new Error(t('Für dieses Formular ist keine Formulardefinition hinterlegt. Bitte im Form Designer erneut bereitstellen.'));
       }
       const listId = this.context.list.guid.toString();
       const [definition, fields] = await Promise.all([
@@ -40,7 +42,7 @@ export default class FormDesignerRuntimeFormCustomizer extends BaseFormCustomize
         this._sp.getFields(listId, this.context.contentType.id)
       ]);
       if (!definition) {
-        throw new Error(`Die Formulardefinition wurde nicht gefunden: ${this.properties.definitionUrl}`);
+        throw new Error(t('Die Formulardefinition wurde nicht gefunden: {0}', this.properties.definitionUrl));
       }
       this._definition = normalizeDefinition(definition);
       this._fields = fields;

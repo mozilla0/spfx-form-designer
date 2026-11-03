@@ -7,6 +7,7 @@ import { allowNextNavigation, fdLog } from '../interceptor';
 import { SpService } from '../spService';
 import { FieldValues, ICurrentUser, ISpField } from '../spTypes';
 import { FormHost } from './FormHost';
+import { t } from '../i18n';
 
 /** Formularkonfiguration eines Inhaltstyps der Liste. */
 export interface IListFormConfig {
@@ -42,7 +43,9 @@ function fallbackToPage(url: string): void {
   window.location.href = url;
 }
 
-const DRAG_OPTIONS = { moveMenuItemText: 'Verschieben', closeMenuItemText: 'Schliessen', menu: ContextualMenu, dragHandleSelector: '.fd-dialog-handle' };
+function dragOptions(): { moveMenuItemText: string; closeMenuItemText: string; menu: typeof ContextualMenu; dragHandleSelector: string } {
+  return { moveMenuItemText: t('Verschieben'), closeMenuItemText: t('Schliessen'), menu: ContextualMenu, dragHandleSelector: '.fd-dialog-handle' };
+}
 
 /** Lädt und zeigt ein Formular im Panel oder Dialog über der Listenansicht. */
 export const FormOverlay: React.FC<IFormOverlayProps> = (p) => {
@@ -84,11 +87,11 @@ export const FormOverlay: React.FC<IFormOverlayProps> = (p) => {
 
   const body = (
     <div style={{ minHeight: 200 }}>
-      {!loaded && !error && <Spinner size={SpinnerSize.large} label="Formular wird geladen …" styles={{ root: { padding: 40 } }} />}
+      {!loaded && !error && <Spinner size={SpinnerSize.large} label={t('Formular wird geladen …')} styles={{ root: { padding: 40 } }} />}
       {error && (
         <Stack tokens={{ childrenGap: 12 }} styles={{ root: { padding: 20 } }}>
-          <MessageBar messageBarType={MessageBarType.error}>Das Formular konnte nicht geladen werden. {error}</MessageBar>
-          <DefaultButton text="Als ganze Seite öffnen" onClick={() => fallbackToPage(p.request.url)} styles={{ root: { alignSelf: 'flex-start' } }} />
+          <MessageBar messageBarType={MessageBarType.error}>{t('Das Formular konnte nicht geladen werden.')} {error}</MessageBar>
+          <DefaultButton text={t('Als ganze Seite öffnen')} onClick={() => fallbackToPage(p.request.url)} styles={{ root: { alignSelf: 'flex-start' } }} />
         </Stack>
       )}
       {loaded && (
@@ -116,7 +119,7 @@ export const FormOverlay: React.FC<IFormOverlayProps> = (p) => {
       <Modal
         isOpen
         onDismiss={() => p.onClose(false)}
-        dragOptions={DRAG_OPTIONS}
+        dragOptions={dragOptions()}
         isBlocking
         styles={{
           main: {
@@ -131,7 +134,7 @@ export const FormOverlay: React.FC<IFormOverlayProps> = (p) => {
         }}
       >
         <div className="fd-dialog-handle" style={{ display: 'flex', justifyContent: 'flex-end', padding: '4px 4px 0', cursor: 'move' }}>
-          <IconButton iconProps={{ iconName: 'Cancel' }} ariaLabel="Schliessen" title="Schliessen" onClick={() => p.onClose(false)} />
+          <IconButton iconProps={{ iconName: 'Cancel' }} ariaLabel={t('Schliessen')} title={t('Schliessen')} onClick={() => p.onClose(false)} />
         </div>
         {body}
       </Modal>
@@ -144,7 +147,7 @@ export const FormOverlay: React.FC<IFormOverlayProps> = (p) => {
       type={PanelType.custom}
       customWidth={p.cssWidth ? `min(${p.cssWidth}, 100vw)` : '640px'}
       isLightDismiss={false}
-      closeButtonAriaLabel="Schliessen"
+      closeButtonAriaLabel={t('Schliessen')}
       onDismiss={() => p.onClose(false)}
       styles={{ content: { padding: 0 }, scrollableContent: { overflowY: 'auto' } }}
     >

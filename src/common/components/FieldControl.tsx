@@ -1,38 +1,47 @@
 import * as React from 'react';
 import {
   Checkbox,
+  ComboBox,
   DatePicker,
   DayOfWeek,
   defaultDatePickerStrings,
   Dropdown,
+  IComboBoxOption,
   IDatePickerStrings,
   IDropdownOption,
   IPersonaProps,
   Label,
+  Link,
   NormalPeoplePicker,
   Stack,
   Text,
   TextField
 } from '@fluentui/react';
-import { FieldValue, ILookupValue, ISpField, IUserValue, valueToText } from '../spTypes';
-import { SpService } from '../spService';
-import { formatDate, parseSwissDate, toIsoDate, toLocalDate } from '../dateUtils';
+import { FieldValue, ILookupValue, ISpField, ITermValue, IUrlValue, IUserValue, valueToText } from '../spTypes';
+import { ITermOption, SpService } from '../spService';
+import { datePlaceholder, formatDate, parseDate, toIsoDate, toLocalDate } from '../dateUtils';
+import { getLanguage, t } from '../i18n';
 
-export const DATE_PICKER_STRINGS: IDatePickerStrings = {
-  ...defaultDatePickerStrings,
-  months: ['Januar', 'Februar', 'März', 'April', 'Mai', 'Juni', 'Juli', 'August', 'September', 'Oktober', 'November', 'Dezember'],
-  shortMonths: ['Jan', 'Feb', 'Mär', 'Apr', 'Mai', 'Jun', 'Jul', 'Aug', 'Sep', 'Okt', 'Nov', 'Dez'],
-  days: ['Sonntag', 'Montag', 'Dienstag', 'Mittwoch', 'Donnerstag', 'Freitag', 'Samstag'],
-  shortDays: ['S', 'M', 'D', 'M', 'D', 'F', 'S'],
-  goToToday: 'Heute',
-  prevMonthAriaLabel: 'Vorheriger Monat',
-  nextMonthAriaLabel: 'Nächster Monat',
-  prevYearAriaLabel: 'Vorheriges Jahr',
-  nextYearAriaLabel: 'Nächstes Jahr',
-  closeButtonAriaLabel: 'Schliessen',
-  invalidInputErrorMessage: 'Ungültiges Datum. Format: TT.MM.JJJJ',
-  isRequiredErrorMessage: ''
-};
+function datePickerStrings(): IDatePickerStrings {
+  if (getLanguage() !== 'de') {
+    return { ...defaultDatePickerStrings, invalidInputErrorMessage: t('Ungültiges Datum.'), isRequiredErrorMessage: '' };
+  }
+  return {
+    ...defaultDatePickerStrings,
+    months: ['Januar', 'Februar', 'März', 'April', 'Mai', 'Juni', 'Juli', 'August', 'September', 'Oktober', 'November', 'Dezember'],
+    shortMonths: ['Jan', 'Feb', 'Mär', 'Apr', 'Mai', 'Jun', 'Jul', 'Aug', 'Sep', 'Okt', 'Nov', 'Dez'],
+    days: ['Sonntag', 'Montag', 'Dienstag', 'Mittwoch', 'Donnerstag', 'Freitag', 'Samstag'],
+    shortDays: ['S', 'M', 'D', 'M', 'D', 'F', 'S'],
+    goToToday: 'Heute',
+    prevMonthAriaLabel: 'Vorheriger Monat',
+    nextMonthAriaLabel: 'Nächster Monat',
+    prevYearAriaLabel: 'Vorheriges Jahr',
+    nextYearAriaLabel: 'Nächstes Jahr',
+    closeButtonAriaLabel: 'Schliessen',
+    invalidInputErrorMessage: 'Ungültiges Datum.',
+    isRequiredErrorMessage: ''
+  };
+}
 
 export interface IFieldControlProps {
   field: ISpField;
@@ -48,6 +57,15 @@ export interface IFieldControlProps {
   onBlur?: () => void;
 }
 
+const ERROR_STYLE = { root: { color: '#a4262c', display: 'block', marginTop: 4 } };
+
+const ErrorText: React.FC<{ text?: string }> = ({ text }) =>
+  text ? (
+    <Text variant="small" styles={ERROR_STYLE} role="alert">
+      {text}
+    </Text>
+  ) : null;
+
 function displayText(field: ISpField, value: FieldValue): string {
   if (field.kind === 'date' && typeof value === 'string' && value) {
     return formatDate(value);
@@ -58,7 +76,10 @@ function displayText(field: ISpField, value: FieldValue): string {
   return valueToText(value);
 }
 
-const LookupDropdown: React.FC<IFieldControlProps> = (p) => {
+// ---------- Nachschlagen (einzeln und mehrfach) ----------
+
+const LookupField: React.FC<IFieldControlProps> = (p) => {
+  const multi = p.field.kind === 'lookupmulti';
   const [options, setOptions] = React.useState<ILookupValue[] | undefined>(undefined);
   const [loadError, setLoadError] = React.useState<string>('');
   React.useEffect(() => {
@@ -76,34 +97,68 @@ const LookupDropdown: React.FC<IFieldControlProps> = (p) => {
     };
   }, [p.field.internalName]);
 
-  const current = p.value && typeof p.value === 'object' && !Array.isArray(p.value) ? (p.value as ILookupValue) : undefined;
-  const list = options || (current ? [current] : []);
-  const dropdownOptions: IDropdownOption[] = [{ key: 0, text: '(Keine Auswahl)' }].concat(list.map((o) => ({ key: o.id, text: o.title })));
+  const selected: ILookupValue[] = multi
+    ? Array.isArray(p.value)
+      ? (p.value as ILookupValue[])
+      : []
+    : p.value && typeof p.value === 'object' && !Array.isArray(p.value)
+      ? [p.value as ILookupValue]
+      : [];
+  const known = options || [];
+  const list = known.concat(selected.filter((s) => !known.some((o) => o.id === s.id)));
+  const placeholder = options ? t('Eintrag wählen') : t('Einträge werden geladen …');
+
+  if (multi) {
+    return (
+      <Dropdown
+        label={p.label}
+        required={p.required}
+        disabled={p.disabled}
+        multiSelect
+        placeholder={placeholder}
+        options={list.map((o) => ({ key: o.id, text: o.title }))}
+        selectedKeys={selected.map((s) => s.id)}
+        errorMessage={p.error || loadError || undefined}
+        onChange={(_, o) => {
+          if (!o) {
+            return;
+          }
+          const id = Number(o.key);
+          p.onChange(o.selected ? selected.concat([{ id, title: o.text }]) : selected.filter((s) => s.id !== id));
+        }}
+        onBlur={p.onBlur}
+      />
+    );
+  }
+  const dropdownOptions: IDropdownOption[] = [{ key: 0, text: t('(Keine Auswahl)') }].concat(list.map((o) => ({ key: o.id, text: o.title })));
   return (
     <Dropdown
       label={p.label}
       required={p.required}
       disabled={p.disabled}
-      placeholder={options ? 'Eintrag wählen' : 'Einträge werden geladen …'}
+      placeholder={placeholder}
       options={dropdownOptions}
-      selectedKey={current ? current.id : 0}
+      selectedKey={selected[0] ? selected[0].id : 0}
       errorMessage={p.error || loadError || undefined}
-      onChange={(_, o) => {
-        if (!o || o.key === 0) {
-          p.onChange(null);
-        } else {
-          p.onChange({ id: Number(o.key), title: o.text });
-        }
-      }}
+      onChange={(_, o) => p.onChange(!o || o.key === 0 ? null : { id: Number(o.key), title: o.text })}
       onBlur={p.onBlur}
     />
   );
 };
 
+// ---------- Personen (einzeln und mehrfach) ----------
+
 const PeopleField: React.FC<IFieldControlProps> = (p) => {
+  const multi = p.field.kind === 'usermulti';
   const [busy, setBusy] = React.useState<boolean>(false);
-  const current = p.value && typeof p.value === 'object' && !Array.isArray(p.value) ? (p.value as IUserValue) : undefined;
-  const selected: IPersonaProps[] = current ? [{ key: String(current.id), text: current.title, secondaryText: current.email }] : [];
+  const current: IUserValue[] = multi
+    ? Array.isArray(p.value)
+      ? (p.value as IUserValue[])
+      : []
+    : p.value && typeof p.value === 'object' && !Array.isArray(p.value)
+      ? [p.value as IUserValue]
+      : [];
+  const selected: IPersonaProps[] = current.map((u) => ({ key: `id:${u.id}`, text: u.title, secondaryText: u.email }));
   const inputId = `fd-${p.field.internalName}`;
 
   const resolve = async (filter: string): Promise<IPersonaProps[]> => {
@@ -114,60 +169,182 @@ const PeopleField: React.FC<IFieldControlProps> = (p) => {
     return users.map((u) => ({ key: u.loginName || u.title, text: u.title, secondaryText: u.email }));
   };
 
+  const onChange = (items: IPersonaProps[] | undefined): void => {
+    const list = items || [];
+    if (!p.sp) {
+      return;
+    }
+    // Bereits bekannte Personen behalten, neue über ensureUser auflösen.
+    const keep = current.filter((u) => list.some((i) => i.key === `id:${u.id}`));
+    const added = list.filter((i) => String(i.key).indexOf('id:') !== 0);
+    if (!added.length) {
+      p.onChange(multi ? keep : keep[0] || null);
+      return;
+    }
+    setBusy(true);
+    Promise.all(added.map((i) => (p.sp as SpService).ensureUser(String(i.key))))
+      .then((users) => {
+        setBusy(false);
+        const next = keep.concat(users);
+        p.onChange(multi ? next : next[next.length - 1] || null);
+      })
+      .catch(() => {
+        setBusy(false);
+        p.onChange(multi ? keep : null);
+      });
+  };
+
   return (
     <div>
       <Label htmlFor={inputId} required={p.required} disabled={p.disabled}>
         {p.label}
       </Label>
       <NormalPeoplePicker
-        inputProps={{ id: inputId, onBlur: p.onBlur, placeholder: 'Name oder E-Mail eingeben' }}
-        itemLimit={1}
+        inputProps={{ id: inputId, onBlur: p.onBlur, placeholder: t('Name oder E-Mail eingeben') }}
+        itemLimit={multi ? undefined : 1}
         disabled={p.disabled || busy}
         selectedItems={selected}
         onResolveSuggestions={(filter) => resolve(filter)}
-        pickerSuggestionsProps={{ noResultsFoundText: 'Keine Personen gefunden', loadingText: 'Suche …' }}
-        onChange={(items) => {
-          const item = items && items[0];
-          if (!item) {
-            p.onChange(null);
-            return;
-          }
-          if (!p.sp) {
-            return;
-          }
-          setBusy(true);
-          p.sp
-            .ensureUser(String(item.key))
-            .then((u) => {
-              setBusy(false);
-              p.onChange(u);
-            })
-            .catch(() => {
-              setBusy(false);
-              p.onChange(null);
-            });
-        }}
+        pickerSuggestionsProps={{ noResultsFoundText: t('Keine Personen gefunden'), loadingText: t('Suche …') }}
+        onChange={onChange}
       />
-      {p.error && (
-        <Text variant="small" styles={{ root: { color: '#a4262c' } }} role="alert">
-          {p.error}
-        </Text>
-      )}
+      <ErrorText text={p.error} />
     </div>
   );
 };
+
+// ---------- Verwaltete Metadaten ----------
+
+const TaxonomyField: React.FC<IFieldControlProps> = (p) => {
+  const multi = p.field.kind === 'taxonomymulti';
+  const [terms, setTerms] = React.useState<ITermOption[] | undefined>(undefined);
+  const [loadError, setLoadError] = React.useState<string>('');
+  React.useEffect(() => {
+    let alive = true;
+    if (p.sp) {
+      p.sp
+        .getTerms(p.field)
+        .then((x) => alive && setTerms(x))
+        .catch((e: Error) => alive && setLoadError(t('Begriffe konnten nicht geladen werden: {0}', e.message)));
+    } else {
+      setTerms([]);
+    }
+    return () => {
+      alive = false;
+    };
+  }, [p.field.internalName]);
+
+  const selected: ITermValue[] = multi
+    ? Array.isArray(p.value)
+      ? (p.value as ITermValue[])
+      : []
+    : p.value && typeof p.value === 'object' && !Array.isArray(p.value) && 'termGuid' in p.value
+      ? [p.value as ITermValue]
+      : [];
+  const known = terms || [];
+  const options: IComboBoxOption[] = known
+    .map((o) => ({ key: o.termGuid, text: o.path }))
+    .concat(selected.filter((s) => !known.some((k) => k.termGuid === s.termGuid)).map((s) => ({ key: s.termGuid, text: s.label })));
+  const labelOf = (guid: string, fallback: string): string => {
+    const term = known.filter((k) => k.termGuid === guid)[0];
+    return term ? term.label : fallback;
+  };
+
+  return (
+    <ComboBox
+      label={p.label}
+      required={p.required}
+      disabled={p.disabled}
+      multiSelect={multi}
+      allowFreeform={false}
+      autoComplete="on"
+      placeholder={terms ? t('Begriff wählen') : t('Begriffe werden geladen …')}
+      options={options}
+      selectedKey={multi ? selected.map((s) => s.termGuid) : selected[0] ? selected[0].termGuid : null}
+      errorMessage={p.error || loadError || undefined}
+      useComboBoxAsMenuWidth
+      onChange={(_, o) => {
+        if (!o) {
+          return;
+        }
+        const guid = String(o.key);
+        if (multi) {
+          p.onChange(o.selected ? selected.concat([{ termGuid: guid, label: labelOf(guid, o.text) }]) : selected.filter((s) => s.termGuid !== guid));
+        } else {
+          p.onChange({ termGuid: guid, label: labelOf(guid, o.text) });
+        }
+      }}
+      onBlur={p.onBlur}
+    />
+  );
+};
+
+// ---------- Link oder Bild ----------
+
+const UrlField: React.FC<IFieldControlProps> = (p) => {
+  const v: IUrlValue = p.value && typeof p.value === 'object' && !Array.isArray(p.value) && 'url' in p.value ? (p.value as IUrlValue) : { url: '', description: '' };
+  return (
+    <div>
+      <Stack horizontal wrap tokens={{ childrenGap: 8 }} verticalAlign="end">
+        <TextField
+          label={p.label}
+          required={p.required}
+          disabled={p.disabled}
+          type="url"
+          placeholder="https://…"
+          value={v.url}
+          styles={{ root: { flex: '2 1 220px' } }}
+          onChange={(_, url) => p.onChange({ url: url || '', description: v.description })}
+          onBlur={p.onBlur}
+        />
+        <TextField
+          ariaLabel={t('{0} – Beschreibung', p.label)}
+          placeholder={p.field.urlFormat === 'image' ? t('Alternativtext') : t('Beschreibung (optional)')}
+          disabled={p.disabled}
+          value={v.description}
+          styles={{ root: { flex: '1 1 160px' } }}
+          onChange={(_, description) => p.onChange({ url: v.url, description: description || '' })}
+          onBlur={p.onBlur}
+        />
+      </Stack>
+      <ErrorText text={p.error} />
+    </div>
+  );
+};
+
+function UrlDisplay({ field, value }: { field: ISpField; value: FieldValue }): JSX.Element {
+  const v = value && typeof value === 'object' && !Array.isArray(value) && 'url' in value ? (value as IUrlValue) : undefined;
+  if (!v || !v.url) {
+    return <Text>–</Text>;
+  }
+  if (field.urlFormat === 'image') {
+    return <img src={v.url} alt={v.description} style={{ maxWidth: '100%', maxHeight: 240 }} />;
+  }
+  return (
+    <Link href={v.url} target="_blank" rel="noopener noreferrer">
+      {v.description || v.url}
+    </Link>
+  );
+}
 
 /** Rendert ein einzelnes Feld abhängig vom Spaltentyp. */
 export const FieldControl: React.FC<IFieldControlProps> = (p) => {
   const { field, value } = p;
 
-  if (p.displayOnly) {
+  if (p.displayOnly || field.kind === 'calculated') {
     return (
       <div>
         <Label>{p.label}</Label>
-        <Text styles={{ root: { whiteSpace: field.kind === 'note' ? 'pre-wrap' : 'normal', display: 'block', minHeight: 20 } }}>
-          {displayText(field, value) || '–'}
-        </Text>
+        {field.kind === 'url' ? (
+          <UrlDisplay field={field} value={value} />
+        ) : (
+          <Text styles={{ root: { whiteSpace: field.kind === 'note' ? 'pre-wrap' : 'normal', display: 'block', minHeight: 20 } }}>{displayText(field, value) || '–'}</Text>
+        )}
+        {p.help && (
+          <Text variant="small" styles={{ root: { color: '#605e5c', display: 'block', marginTop: 4 } }}>
+            {p.help}
+          </Text>
+        )}
       </div>
     );
   }
@@ -196,20 +373,11 @@ export const FieldControl: React.FC<IFieldControlProps> = (p) => {
       break;
     case 'number':
       control = (
-        <TextField
-          label={p.label}
-          required={p.required}
-          disabled={p.disabled}
-          type="number"
-          value={str}
-          errorMessage={errorMessage}
-          onChange={(_, v) => p.onChange(v ?? '')}
-          onBlur={p.onBlur}
-        />
+        <TextField label={p.label} required={p.required} disabled={p.disabled} type="number" value={str} errorMessage={errorMessage} onChange={(_, v) => p.onChange(v ?? '')} onBlur={p.onBlur} />
       );
       break;
     case 'choice': {
-      const options: IDropdownOption[] = (p.required ? [] : [{ key: '', text: '(Keine Auswahl)' }]).concat(field.choices.map((c) => ({ key: c, text: c })));
+      const options: IDropdownOption[] = (p.required ? [] : [{ key: '', text: t('(Keine Auswahl)') }]).concat(field.choices.map((c) => ({ key: c, text: c })));
       control = (
         <Dropdown
           label={p.label}
@@ -217,7 +385,7 @@ export const FieldControl: React.FC<IFieldControlProps> = (p) => {
           disabled={p.disabled}
           options={options}
           selectedKey={str}
-          placeholder="Auswahl treffen"
+          placeholder={t('Auswahl treffen')}
           errorMessage={errorMessage}
           onChange={(_, o) => p.onChange(o ? String(o.key) : '')}
           onBlur={p.onBlur}
@@ -226,7 +394,7 @@ export const FieldControl: React.FC<IFieldControlProps> = (p) => {
       break;
     }
     case 'multichoice': {
-      const selected = Array.isArray(value) ? value : [];
+      const selected = Array.isArray(value) ? (value as string[]) : [];
       control = (
         <Dropdown
           label={p.label}
@@ -235,7 +403,7 @@ export const FieldControl: React.FC<IFieldControlProps> = (p) => {
           multiSelect
           options={field.choices.map((c) => ({ key: c, text: c }))}
           selectedKeys={selected}
-          placeholder="Auswahl treffen"
+          placeholder={t('Auswahl treffen')}
           errorMessage={errorMessage}
           onChange={(_, o) => {
             if (!o) {
@@ -255,12 +423,8 @@ export const FieldControl: React.FC<IFieldControlProps> = (p) => {
           <Label required={p.required} disabled={p.disabled}>
             {p.label}
           </Label>
-          <Checkbox label="Ja" checked={value === true} disabled={p.disabled} onChange={(_, c) => p.onChange(!!c)} />
-          {errorMessage && (
-            <Text variant="small" styles={{ root: { color: '#a4262c' } }} role="alert">
-              {errorMessage}
-            </Text>
-          )}
+          <Checkbox label={t('Ja')} checked={value === true} disabled={p.disabled} onChange={(_, c) => p.onChange(!!c)} />
+          <ErrorText text={errorMessage} />
         </Stack>
       );
       break;
@@ -274,12 +438,12 @@ export const FieldControl: React.FC<IFieldControlProps> = (p) => {
           isRequired={p.required}
           disabled={p.disabled}
           allowTextInput
-          firstDayOfWeek={DayOfWeek.Monday}
-          strings={DATE_PICKER_STRINGS}
-          placeholder="TT.MM.JJJJ"
+          firstDayOfWeek={getLanguage() === 'de' ? DayOfWeek.Monday : DayOfWeek.Sunday}
+          strings={datePickerStrings()}
+          placeholder={datePlaceholder()}
           value={datePart}
           formatDate={(d) => (d ? formatDate(d) : '')}
-          parseDateFromString={(s) => parseSwissDate(s)}
+          parseDateFromString={(s) => parseDate(s)}
           onSelectDate={(d) => {
             if (!d) {
               p.onChange('');
@@ -295,48 +459,47 @@ export const FieldControl: React.FC<IFieldControlProps> = (p) => {
         field.kind === 'date' ? (
           <div>
             {picker}
-            {errorMessage && (
-              <Text variant="small" styles={{ root: { color: '#a4262c' } }} role="alert">
-                {errorMessage}
-              </Text>
-            )}
+            <ErrorText text={errorMessage} />
           </div>
         ) : (
           <div>
             <Stack horizontal tokens={{ childrenGap: 8 }} verticalAlign="end">
               {picker}
               <TextField
-                ariaLabel={`${p.label} – Uhrzeit`}
+                ariaLabel={t('{0} – Uhrzeit', p.label)}
                 type="time"
                 disabled={p.disabled || !datePart}
                 value={timePart}
                 styles={{ root: { width: 110 } }}
-                onChange={(_, t) => datePart && p.onChange(`${toIsoDate(datePart)}T${t || '00:00'}`)}
+                onChange={(_, time) => datePart && p.onChange(`${toIsoDate(datePart)}T${time || '00:00'}`)}
                 onBlur={p.onBlur}
               />
             </Stack>
-            {errorMessage && (
-              <Text variant="small" styles={{ root: { color: '#a4262c' } }} role="alert">
-                {errorMessage}
-              </Text>
-            )}
+            <ErrorText text={errorMessage} />
           </div>
         );
       break;
     }
     case 'user':
+    case 'usermulti':
       control = <PeopleField {...p} />;
       break;
     case 'lookup':
-      control = <LookupDropdown {...p} />;
+    case 'lookupmulti':
+      control = <LookupField {...p} />;
+      break;
+    case 'taxonomy':
+    case 'taxonomymulti':
+      control = <TaxonomyField {...p} />;
+      break;
+    case 'url':
+      control = <UrlField {...p} />;
       break;
     default:
       control = (
         <div>
           <Label>{p.label}</Label>
-          <Text variant="small">
-            {displayText(field, value) || '–'} (Spaltentyp «{field.typeAsString}» wird im Formular noch nicht bearbeitet)
-          </Text>
+          <Text variant="small">{t('{0} (Spaltentyp «{1}» wird im Formular noch nicht bearbeitet)', displayText(field, value) || '–', field.typeAsString)}</Text>
         </div>
       );
   }

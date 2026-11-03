@@ -1,7 +1,7 @@
 import * as React from 'react';
 import { Checkbox, ChoiceGroup, DefaultButton, Dropdown, Icon, IDropdownOption, IconButton, Stack, Text, TextField } from '@fluentui/react';
 import { DateRule, FormMode, IFieldSettings, IFormDefinition, PatternKind, VisibilityOperator } from '../../../common/model';
-import { FIELD_KIND_LABELS, ICurrentUser, ISpField, valueToText } from '../../../common/spTypes';
+import { fieldKindLabel, ICurrentUser, ISpField, valueToText } from '../../../common/spTypes';
 import { computeDefault, defaultOptionsFor } from '../../../common/defaults';
 import { PATTERNS } from '../../../common/validation';
 import { formatDateWithWeekday } from '../../../common/dateUtils';
@@ -20,6 +20,7 @@ import {
   updateSection
 } from './designerState';
 import styles from './FormDesigner.module.scss';
+import { t } from '../../../common/i18n';
 
 export interface IPropertiesPanelProps {
   definition: IFormDefinition;
@@ -31,34 +32,36 @@ export interface IPropertiesPanelProps {
   onUploadImage: (file: File) => Promise<string>;
 }
 
-const MODE_LABELS: Record<FormMode, string> = { new: 'Neu', edit: 'Bearbeiten', display: 'Anzeigen' };
+function modeLabel(m: FormMode): string {
+  return m === 'new' ? t('Neu') : m === 'edit' ? t('Bearbeiten') : t('Anzeigen');
+}
 
-const VISIBILITY_OPTIONS: IDropdownOption[] = [
-  { key: 'always', text: 'Immer' },
-  { key: 'eq', text: 'Wenn Feld gleich Wert' },
-  { key: 'ne', text: 'Wenn Feld ungleich Wert' },
-  { key: 'notEmpty', text: 'Wenn Feld ausgefüllt' },
-  { key: 'empty', text: 'Wenn Feld leer' },
-  { key: 'modeIs', text: 'Nur in einem Formulartyp' }
+const VISIBILITY_OPTIONS = (): IDropdownOption[] => [
+  { key: 'always', text: t('Immer') },
+  { key: 'eq', text: t('Wenn Feld gleich Wert') },
+  { key: 'ne', text: t('Wenn Feld ungleich Wert') },
+  { key: 'notEmpty', text: t('Wenn Feld ausgefüllt') },
+  { key: 'empty', text: t('Wenn Feld leer') },
+  { key: 'modeIs', text: t('Nur in einem Formulartyp') }
 ];
 
-const PATTERN_OPTIONS: IDropdownOption[] = [
-  { key: 'none', text: 'Keines' },
-  { key: 'email', text: PATTERNS.email.label },
-  { key: 'phoneCH', text: PATTERNS.phoneCH.label },
-  { key: 'plzCH', text: PATTERNS.plzCH.label },
-  { key: 'custom', text: 'Eigener regulärer Ausdruck' }
+const PATTERN_OPTIONS = (): IDropdownOption[] => [
+  { key: 'none', text: t('Keines') },
+  { key: 'email', text: PATTERNS.email.label() },
+  { key: 'phoneCH', text: PATTERNS.phoneCH.label() },
+  { key: 'plzCH', text: PATTERNS.plzCH.label() },
+  { key: 'custom', text: t('Eigener regulärer Ausdruck') }
 ];
 
-const DATE_RULE_OPTIONS: IDropdownOption[] = [
-  { key: 'none', text: 'Keine Einschränkung' },
-  { key: 'notPast', text: 'Nicht in der Vergangenheit' },
-  { key: 'future', text: 'Nur in der Zukunft' },
-  { key: 'notFuture', text: 'Nicht in der Zukunft' }
+const DATE_RULE_OPTIONS = (): IDropdownOption[] => [
+  { key: 'none', text: t('Keine Einschränkung') },
+  { key: 'notPast', text: t('Nicht in der Vergangenheit') },
+  { key: 'future', text: t('Nur in der Zukunft') },
+  { key: 'notFuture', text: t('Nicht in der Zukunft') }
 ];
 
-const FORMULA_HELP: string =
-  "Verfügbar: today(), addDays(d, n), addWorkdays(d, n), endOfMonth(d), field('Name'), user.displayName. Wird beim Öffnen des Formulars «Neu» einmal berechnet.";
+const FORMULA_HELP = (): string =>
+  t("Verfügbar: today(), addDays(d, n), addWorkdays(d, n), endOfMonth(d), field('Name'), user.displayName. Wird beim Öffnen des Formulars «Neu» einmal berechnet.");
 
 function numOrUndefined(v: string | undefined): number | undefined {
   if (v === undefined || v.trim() === '') {
@@ -92,24 +95,24 @@ const HeaderSettings: React.FC<IPropertiesPanelProps> = (p) => {
   const set = (patch: Partial<IFormHeader>): void => p.onChange({ ...def, header: { ...h, ...patch } });
 
   return (
-    <Group legend="Kopfbereich">
+    <Group legend={t('Kopfbereich')}>
       <Dropdown
-        label="Stil"
+        label={t('Stil')}
         selectedKey={h.style || 'plain'}
         options={[
-          { key: 'plain', text: 'Schlicht' },
-          { key: 'line', text: 'Mit Akzentlinie' },
-          { key: 'band', text: 'Farbiges Band' }
+          { key: 'plain', text: t('Schlicht') },
+          { key: 'line', text: t('Mit Akzentlinie') },
+          { key: 'band', text: t('Farbiges Band') }
         ]}
         onChange={(_, o) => o && set({ style: o.key as HeaderStyle })}
       />
-      <TextField label="Untertitel" value={h.subtitle || ''} placeholder="Optional, z. B. Auftrag {Title}" onChange={(_, v) => set({ subtitle: v || '' })} />
+      <TextField label={t('Untertitel')} value={h.subtitle || ''} placeholder="Optional, z. B. Auftrag {Title}" onChange={(_, v) => set({ subtitle: v || '' })} />
 
       <Stack horizontal verticalAlign="end" tokens={{ childrenGap: 8 }}>
         <TextField
-          label="Icon (Fluent-UI-Name)"
+          label={t('Icon (Fluent-UI-Name)')}
           value={h.icon || ''}
-          placeholder="z. B. Repair"
+          placeholder={t('z. B. Repair')}
           styles={{ root: { flexGrow: 1 } }}
           onChange={(_, v) => set({ icon: (v || '').trim() })}
         />
@@ -119,12 +122,12 @@ const HeaderSettings: React.FC<IPropertiesPanelProps> = (p) => {
       </Stack>
       <div className={styles.chips}>
         {ICON_SUGGESTIONS.map((name) => (
-          <IconButton key={name} iconProps={{ iconName: name }} title={name} ariaLabel={`Icon ${name} verwenden`} checked={h.icon === name} onClick={() => set({ icon: h.icon === name ? '' : name })} />
+          <IconButton key={name} iconProps={{ iconName: name }} title={name} ariaLabel={t('Icon {0} verwenden', name)} checked={h.icon === name} onClick={() => set({ icon: h.icon === name ? '' : name })} />
         ))}
       </div>
-      <span className={styles.hint}>Alle Namen findet man im Fluent UI Icons Tool (aka.ms/fluentui-icons, Version 8).</span>
+      <span className={styles.hint}>{t('Alle Namen findet man im Fluent UI Icons Tool (aka.ms/fluentui-icons, Version 8).')}</span>
 
-      <TextField label="Logo oder Bild (URL)" value={h.imageUrl || ''} placeholder="/sites/…/SiteAssets/logo.png" onChange={(_, v) => set({ imageUrl: (v || '').trim() })} />
+      <TextField label={t('Logo oder Bild (URL)')} value={h.imageUrl || ''} placeholder={t('/sites/…/SiteAssets/logo.png')} onChange={(_, v) => set({ imageUrl: (v || '').trim() })} />
       <Stack horizontal tokens={{ childrenGap: 8 }} wrap>
         <input
           ref={fileRef}
@@ -146,17 +149,17 @@ const HeaderSettings: React.FC<IPropertiesPanelProps> = (p) => {
               .catch(() => undefined);
           }}
         />
-        <DefaultButton text={uploading ? 'Wird hochgeladen …' : 'Bild hochladen'} iconProps={{ iconName: 'Upload' }} disabled={uploading} onClick={() => fileRef.current && fileRef.current.click()} />
-        {h.imageUrl && <DefaultButton text="Entfernen" onClick={() => set({ imageUrl: '' })} />}
+        <DefaultButton text={uploading ? t('Wird hochgeladen …') : t('Bild hochladen')} iconProps={{ iconName: 'Upload' }} disabled={uploading} onClick={() => fileRef.current && fileRef.current.click()} />
+        {h.imageUrl && <DefaultButton text={t('Entfernen')} onClick={() => set({ imageUrl: '' })} />}
       </Stack>
       {uploadError && <Text styles={{ root: { color: '#a4262c' } }}>{uploadError}</Text>}
       {h.imageUrl && (
         <ChoiceGroup
-          label="Position des Bilds"
+          label={t('Position des Bilds')}
           selectedKey={h.imagePosition || 'left'}
           options={[
-            { key: 'left', text: 'Links' },
-            { key: 'right', text: 'Rechts' }
+            { key: 'left', text: t('Links') },
+            { key: 'right', text: t('Rechts') }
           ]}
           onChange={(_, o) => o && set({ imagePosition: o.key === 'right' ? 'right' : 'left' })}
         />
@@ -164,22 +167,22 @@ const HeaderSettings: React.FC<IPropertiesPanelProps> = (p) => {
 
       <Stack horizontal verticalAlign="end" tokens={{ childrenGap: 8 }}>
         <TextField
-          label="Akzentfarbe"
+          label={t('Akzentfarbe')}
           value={h.accentColor || ''}
           placeholder={DEFAULT_ACCENT}
           styles={{ root: { flexGrow: 1 } }}
-          errorMessage={h.accentColor && !isHexColor(h.accentColor) ? 'Format #RRGGBB' : undefined}
+          errorMessage={h.accentColor && !isHexColor(h.accentColor) ? t('Format #RRGGBB') : undefined}
           onChange={(_, v) => set({ accentColor: (v || '').trim() })}
         />
         <input
           type="color"
-          aria-label="Akzentfarbe wählen"
+          aria-label={t('Akzentfarbe wählen')}
           value={isHexColor(h.accentColor) ? (h.accentColor as string) : DEFAULT_ACCENT}
           onChange={(e) => set({ accentColor: e.target.value })}
           style={{ width: 40, height: 32, padding: 0, border: '1px solid #e1dfdd', borderRadius: 4, background: '#fff' }}
         />
       </Stack>
-      <span className={styles.hint}>Beim farbigen Band wird die Schrift automatisch schwarz oder weiss gesetzt, je nachdem, was besser lesbar ist.</span>
+      <span className={styles.hint}>{t('Beim farbigen Band wird die Schrift automatisch schwarz oder weiss gesetzt, je nachdem, was besser lesbar ist.')}</span>
     </Group>
   );
 };
@@ -191,22 +194,22 @@ const FormProperties: React.FC<IPropertiesPanelProps> = (p) => {
   return (
     <Stack tokens={{ childrenGap: 12 }}>
       <TextField
-        label={`Titel – Formular «${MODE_LABELS[p.formMode]}»`}
+        label={t('Titel – Formular «{0}»', modeLabel(p.formMode))}
         value={def.titles[p.formMode]}
         onChange={(_, v) => p.onChange({ ...def, titles: { ...def.titles, [p.formMode]: v || '' } })}
-        description="Platzhalter mit internem Feldnamen in geschweiften Klammern, z. B. {Title}. Oben den Formulartyp wechseln, um die anderen Titel zu bearbeiten. Per Skript mit form.title überschreibbar."
+        description={t('Platzhalter mit internem Feldnamen in geschweiften Klammern, z. B. {Title}. Oben den Formulartyp wechseln, um die anderen Titel zu bearbeiten. Per Skript mit form.title überschreibbar.')}
       />
       <HeaderSettings {...p} />
-      <Group legend="Darstellung aus der Listenansicht">
+      <Group legend={t('Darstellung aus der Listenansicht')}>
         {(['new', 'edit', 'display'] as FormMode[]).map((m) => (
           <Dropdown
             key={m}
-            label={`Formular «${MODE_LABELS[m]}»`}
+            label={t('Formular «{0}»', modeLabel(m))}
             selectedKey={displayModeOf(def.layout, m)}
             options={[
-              { key: 'panel', text: 'Panel' },
-              { key: 'dialog', text: 'Dialog' },
-              { key: 'page', text: 'Ganze Seite' }
+              { key: 'panel', text: t('Panel') },
+              { key: 'dialog', text: t('Dialog') },
+              { key: 'page', text: t('Ganze Seite') }
             ]}
             onChange={(_, o) =>
               o &&
@@ -221,14 +224,14 @@ const FormProperties: React.FC<IPropertiesPanelProps> = (p) => {
           />
         ))}
         <span className={styles.hint}>
-          Panel und Dialog greifen beim Öffnen aus der Listenansicht (Befehlsleiste muss sichtbar sein). Direkte Links öffnen das Formular als ganze Seite.
+          {t('Panel und Dialog greifen beim Öffnen aus der Listenansicht (Befehlsleiste muss sichtbar sein). Direkte Links öffnen das Formular als ganze Seite.')}
         </span>
       </Group>
-      <Group legend="Breite von Panel und Dialog">
+      <Group legend={t('Breite von Panel und Dialog')}>
         <Dropdown
-          ariaLabel="Breite von Panel und Dialog"
+          ariaLabel={t('Breite von Panel und Dialog')}
           selectedKey={(def.layout && def.layout.panelSize) || 'default'}
-          options={PANEL_SIZES.map((s) => ({ key: s.key, text: s.text }))}
+          options={PANEL_SIZES.map((s) => ({ key: s.key, text: s.text() }))}
           onChange={(_, o) =>
             o &&
             p.onChange({
@@ -239,30 +242,30 @@ const FormProperties: React.FC<IPropertiesPanelProps> = (p) => {
         />
         {def.layout && def.layout.panelSize === 'custom' && (
           <TextField
-            label="Breite in Pixeln"
+            label={t('Breite in Pixeln')}
             type="number"
             min={320}
             value={numText(def.layout.panelWidth)}
             onChange={(_, v) => p.onChange({ ...def, layout: { ...(def.layout || { panelSize: 'custom' }), panelWidth: numOrUndefined(v) } })}
-            errorMessage={def.layout.panelWidth !== undefined && def.layout.panelWidth < 320 ? 'Mindestens 320 Pixel.' : undefined}
+            errorMessage={def.layout.panelWidth !== undefined && def.layout.panelWidth < 320 ? t('Mindestens 320 Pixel.') : undefined}
           />
         )}
         <span className={styles.hint}>
-          Gilt für das Panel und den Dialog des Form Designers. «Standard» entspricht 640 px im Panel und 720 px im Dialog. Auf kleinen Bildschirmen bleiben beide höchstens bildschirmbreit.
+          {t('Gilt für das Panel und den Dialog des Form Designers. «Standard» entspricht 640 px im Panel und 720 px im Dialog. Auf kleinen Bildschirmen bleiben beide höchstens bildschirmbreit.')}
         </span>
       </Group>
-      <Group legend="Tabs">
-        {def.tabs.map((t) => {
-          const hasSections = def.sections.some((s) => s.tabId === t.id);
+      <Group legend={t('Tabs')}>
+        {def.tabs.map((tab) => {
+          const hasSections = def.sections.some((s) => s.tabId === tab.id);
           return (
-            <Stack key={t.id} horizontal verticalAlign="end" tokens={{ childrenGap: 4 }}>
-              <TextField ariaLabel="Tab-Bezeichnung" value={t.label} styles={{ root: { flexGrow: 1 } }} onChange={(_, v) => p.onChange(renameTab(def, t.id, v || ''))} />
+            <Stack key={tab.id} horizontal verticalAlign="end" tokens={{ childrenGap: 4 }}>
+              <TextField ariaLabel={t('Tab-Bezeichnung')} value={tab.label} styles={{ root: { flexGrow: 1 } }} onChange={(_, v) => p.onChange(renameTab(def, tab.id, v || ''))} />
               <IconButton
                 iconProps={{ iconName: 'Delete' }}
-                title={hasSections || def.tabs.length === 1 ? 'Nur leere Tabs können gelöscht werden' : 'Tab löschen'}
-                ariaLabel="Tab löschen"
+                title={hasSections || def.tabs.length === 1 ? t('Nur leere Tabs können gelöscht werden') : t('Tab löschen')}
+                ariaLabel={t('Tab löschen')}
                 disabled={hasSections || def.tabs.length === 1}
-                onClick={() => p.onChange(deleteTab(def, t.id), { kind: 'form' })}
+                onClick={() => p.onChange(deleteTab(def, tab.id), { kind: 'form' })}
               />
             </Stack>
           );
@@ -283,27 +286,27 @@ const SectionProperties: React.FC<IPropertiesPanelProps & { sectionId: string }>
   const sectionsInTab = def.sections.filter((s) => s.tabId === section.tabId).length;
   return (
     <Stack tokens={{ childrenGap: 12 }}>
-      <TextField label="Abschnittstitel" value={section.title} onChange={(_, v) => p.onChange(updateSection(def, section.id, { title: v || '' }))} />
+      <TextField label={t('Abschnittstitel')} value={section.title} onChange={(_, v) => p.onChange(updateSection(def, section.id, { title: v || '' }))} />
       <ChoiceGroup
-        label="Spalten"
+        label={t('Spalten')}
         selectedKey={String(section.columns)}
         options={[
-          { key: '1', text: 'Einspaltig' },
-          { key: '2', text: 'Zweispaltig' }
+          { key: '1', text: t('Einspaltig') },
+          { key: '2', text: t('Zweispaltig') }
         ]}
         onChange={(_, o) => o && p.onChange(updateSection(def, section.id, { columns: o.key === '1' ? 1 : 2 }))}
       />
       <Dropdown
-        label="Tab"
+        label={t('Tab')}
         selectedKey={section.tabId}
-        options={def.tabs.map((t) => ({ key: t.id, text: t.label }))}
+        options={def.tabs.map((tab) => ({ key: tab.id, text: tab.label }))}
         onChange={(_, o) => o && p.onChange(updateSection(def, section.id, { tabId: String(o.key) }))}
       />
       <DefaultButton
-        text="Abschnitt löschen"
+        text={t('Abschnitt löschen')}
         iconProps={{ iconName: 'Delete' }}
         disabled={section.fields.length > 0 || sectionsInTab < 2}
-        title={section.fields.length > 0 ? 'Zuerst alle Felder aus dem Abschnitt entfernen' : undefined}
+        title={section.fields.length > 0 ? t('Zuerst alle Felder aus dem Abschnitt entfernen') : undefined}
         onClick={() => p.onChange(deleteSection(def, section.id), 'clear')}
       />
     </Stack>
@@ -335,84 +338,84 @@ const FieldProperties: React.FC<IPropertiesPanelProps & { name: string }> = (p) 
     if (preview.error) {
       previewText = preview.error;
     } else if (isDate && typeof preview.value === 'string' && preview.value) {
-      previewText = `Ergebnis heute: ${formatDateWithWeekday(preview.value)}${kind === 'datetime' ? ` ${preview.value.slice(11, 16)}` : ''}`;
+      previewText = t('Ergebnis heute: {0}', `${formatDateWithWeekday(preview.value)}${kind === 'datetime' ? ` ${preview.value.slice(11, 16)}` : ''}`);
     } else {
-      previewText = `Ergebnis heute: ${valueToText(preview.value) || '(leer)'}`;
+      previewText = t('Ergebnis heute: {0}', valueToText(preview.value) || t('(leer)'));
     }
   }
 
   return (
     <Stack tokens={{ childrenGap: 12 }}>
-      <TextField label="Bezeichnung" placeholder={field ? field.title : ''} value={s.label || ''} onChange={(_, v) => set({ label: v || '' })} description="Leer lassen, um den Spaltennamen zu verwenden." />
+      <TextField label={t('Bezeichnung')} placeholder={field ? field.title : ''} value={s.label || ''} onChange={(_, v) => set({ label: v || '' })} description={t('Leer lassen, um den Spaltennamen zu verwenden.')} />
       <Stack horizontal tokens={{ childrenGap: 16 }}>
         <div>
-          <Text variant="small" styles={{ root: { color: '#605e5c', display: 'block' } }}>Interner Name</Text>
+          <Text variant="small" styles={{ root: { color: '#605e5c', display: 'block' } }}>{t('Interner Name')}</Text>
           <Text styles={{ root: { fontFamily: 'Consolas, monospace' } }}>{p.name}</Text>
         </div>
         <div>
-          <Text variant="small" styles={{ root: { color: '#605e5c', display: 'block' } }}>Spaltentyp</Text>
-          <Text>{field ? FIELD_KIND_LABELS[kind] : 'Spalte fehlt'}</Text>
+          <Text variant="small" styles={{ root: { color: '#605e5c', display: 'block' } }}>{t('Spaltentyp')}</Text>
+          <Text>{field ? fieldKindLabel(kind) : t('Spalte fehlt')}</Text>
         </div>
       </Stack>
       <ChoiceGroup
-        label="Breite"
+        label={t('Breite')}
         selectedKey={s.width}
         options={[
-          { key: 'half', text: 'Halbe Breite' },
-          { key: 'full', text: 'Volle Breite' }
+          { key: 'half', text: t('Halbe Breite') },
+          { key: 'full', text: t('Volle Breite') }
         ]}
         onChange={(_, o) => o && set({ width: o.key === 'full' ? 'full' : 'half' })}
       />
       <Checkbox
-        label={field && field.required ? 'Pflichtfeld (in SharePoint als erforderlich definiert)' : 'Pflichtfeld'}
+        label={field && field.required ? t('Pflichtfeld (in SharePoint als erforderlich definiert)') : t('Pflichtfeld')}
         checked={s.required || (!!field && field.required)}
         disabled={!!field && field.required}
         onChange={(_, c) => set({ required: !!c })}
       />
-      <Checkbox label="Schreibgeschützt" checked={s.readOnly} onChange={(_, c) => set({ readOnly: !!c })} />
-      <TextField label="Hilfetext" value={s.help || ''} placeholder="Optional" onChange={(_, v) => set({ help: v || '' })} />
+      <Checkbox label={t('Schreibgeschützt')} checked={s.readOnly} onChange={(_, c) => set({ readOnly: !!c })} />
+      <TextField label={t('Hilfetext')} value={s.help || ''} placeholder={t('Optional')} onChange={(_, v) => set({ help: v || '' })} />
 
-      <Group legend="Sichtbarkeit">
+      <Group legend={t('Sichtbarkeit')}>
         <Dropdown
-          ariaLabel="Sichtbar wenn"
+          ariaLabel={t('Sichtbar wenn')}
           selectedKey={s.visibility.operator}
-          options={VISIBILITY_OPTIONS}
+          options={VISIBILITY_OPTIONS()}
           onChange={(_, o) => o && set({ visibility: { ...s.visibility, operator: o.key as VisibilityOperator } })}
         />
         {['eq', 'ne', 'empty', 'notEmpty'].indexOf(s.visibility.operator) >= 0 && (
-          <Dropdown label="Feld" selectedKey={s.visibility.field} options={otherFields} onChange={(_, o) => o && set({ visibility: { ...s.visibility, field: String(o.key) } })} />
+          <Dropdown label={t('Feld')} selectedKey={s.visibility.field} options={otherFields} onChange={(_, o) => o && set({ visibility: { ...s.visibility, field: String(o.key) } })} />
         )}
         {(s.visibility.operator === 'eq' || s.visibility.operator === 'ne') && (
-          <TextField label="Wert" value={s.visibility.value || ''} onChange={(_, v) => set({ visibility: { ...s.visibility, value: v || '' } })} />
+          <TextField label={t('Wert')} value={s.visibility.value || ''} onChange={(_, v) => set({ visibility: { ...s.visibility, value: v || '' } })} />
         )}
         {s.visibility.operator === 'modeIs' && (
           <Dropdown
-            label="Formulartyp"
+            label={t('Formulartyp')}
             selectedKey={s.visibility.mode || 'edit'}
             options={[
-              { key: 'new', text: 'Neu' },
-              { key: 'edit', text: 'Bearbeiten' },
-              { key: 'display', text: 'Anzeigen' }
+              { key: 'new', text: t('Neu') },
+              { key: 'edit', text: t('Bearbeiten') },
+              { key: 'display', text: t('Anzeigen') }
             ]}
             onChange={(_, o) => o && set({ visibility: { ...s.visibility, mode: o.key as FormMode } })}
           />
         )}
-        <span className={styles.hint}>Für komplexere Logik das Formular-Skript verwenden.</span>
+        <span className={styles.hint}>{t('Für komplexere Logik das Formular-Skript verwenden.')}</span>
       </Group>
 
-      <Group legend="Validierung">
+      <Group legend={t('Validierung')}>
         {isText && (
           <>
             <Stack horizontal tokens={{ childrenGap: 8 }}>
-              <TextField label="Min. Länge" type="number" value={numText(s.validation.minLength)} onChange={(_, v) => set({ validation: { ...s.validation, minLength: numOrUndefined(v) } })} />
-              <TextField label="Max. Länge" type="number" value={numText(s.validation.maxLength)} onChange={(_, v) => set({ validation: { ...s.validation, maxLength: numOrUndefined(v) } })} />
+              <TextField label={t('Min. Länge')} type="number" value={numText(s.validation.minLength)} onChange={(_, v) => set({ validation: { ...s.validation, minLength: numOrUndefined(v) } })} />
+              <TextField label={t('Max. Länge')} type="number" value={numText(s.validation.maxLength)} onChange={(_, v) => set({ validation: { ...s.validation, maxLength: numOrUndefined(v) } })} />
             </Stack>
-            <Dropdown label="Format" selectedKey={s.validation.pattern} options={PATTERN_OPTIONS} onChange={(_, o) => o && set({ validation: { ...s.validation, pattern: o.key as PatternKind } })} />
+            <Dropdown label={t('Format')} selectedKey={s.validation.pattern} options={PATTERN_OPTIONS()} onChange={(_, o) => o && set({ validation: { ...s.validation, pattern: o.key as PatternKind } })} />
             {s.validation.pattern === 'custom' && (
               <TextField
-                label="Regulärer Ausdruck"
+                label={t('Regulärer Ausdruck')}
                 value={s.validation.regex || ''}
-                placeholder="z. B. ^SA-[0-9]+$"
+                placeholder={t('z. B. ^SA-[0-9]+$')}
                 styles={{ field: { fontFamily: 'Consolas, monospace' } }}
                 onChange={(_, v) => set({ validation: { ...s.validation, regex: v || '' } })}
               />
@@ -421,24 +424,24 @@ const FieldProperties: React.FC<IPropertiesPanelProps & { name: string }> = (p) 
         )}
         {isNumber && (
           <Stack horizontal tokens={{ childrenGap: 8 }}>
-            <TextField label="Minimum" type="number" value={numText(s.validation.min)} onChange={(_, v) => set({ validation: { ...s.validation, min: numOrUndefined(v) } })} />
-            <TextField label="Maximum" type="number" value={numText(s.validation.max)} onChange={(_, v) => set({ validation: { ...s.validation, max: numOrUndefined(v) } })} />
+            <TextField label={t('Minimum')} type="number" value={numText(s.validation.min)} onChange={(_, v) => set({ validation: { ...s.validation, min: numOrUndefined(v) } })} />
+            <TextField label={t('Maximum')} type="number" value={numText(s.validation.max)} onChange={(_, v) => set({ validation: { ...s.validation, max: numOrUndefined(v) } })} />
           </Stack>
         )}
         {isDate && (
-          <Dropdown label="Erlaubter Bereich" selectedKey={s.validation.dateRule} options={DATE_RULE_OPTIONS} onChange={(_, o) => o && set({ validation: { ...s.validation, dateRule: o.key as DateRule } })} />
+          <Dropdown label={t('Erlaubter Bereich')} selectedKey={s.validation.dateRule} options={DATE_RULE_OPTIONS()} onChange={(_, o) => o && set({ validation: { ...s.validation, dateRule: o.key as DateRule } })} />
         )}
         {(isText || isNumber || isDate) && (
-          <TextField label="Eigene Fehlermeldung" placeholder="Standardmeldung verwenden" value={s.validation.message || ''} onChange={(_, v) => set({ validation: { ...s.validation, message: v || '' } })} />
+          <TextField label={t('Eigene Fehlermeldung')} placeholder={t('Standardmeldung verwenden')} value={s.validation.message || ''} onChange={(_, v) => set({ validation: { ...s.validation, message: v || '' } })} />
         )}
-        {!isText && !isNumber && !isDate && <span className={styles.hint}>Für diesen Spaltentyp gibt es Pflichtfeld und Skript-Prüfungen.</span>}
-        <span className={styles.hint}>Abhängige Regeln per Skript mit .validate(fn).</span>
+        {!isText && !isNumber && !isDate && <span className={styles.hint}>{t('Für diesen Spaltentyp gibt es Pflichtfeld und Skript-Prüfungen.')}</span>}
+        <span className={styles.hint}>{t('Abhängige Regeln per Skript mit .validate(fn).')}</span>
       </Group>
 
       {defaultOptions.length > 1 && (
-        <Group legend="Standardwert (Formular «Neu»)">
+        <Group legend={t('Standardwert (Formular «Neu»)')}>
           <Dropdown
-            ariaLabel="Vorbelegung"
+            ariaLabel={t('Vorbelegung')}
             selectedKey={s.defaultValue.mode}
             options={defaultOptions.map((o) => ({ key: o.key, text: o.text }))}
             onChange={(_, o) => {
@@ -457,14 +460,14 @@ const FieldProperties: React.FC<IPropertiesPanelProps & { name: string }> = (p) 
             }}
           />
           {(s.defaultValue.mode === 'todayPlus' || s.defaultValue.mode === 'workdaysPlus') && (
-            <TextField label="Anzahl Tage" type="number" value={numText(s.defaultValue.days)} onChange={(_, v) => set({ defaultValue: { ...s.defaultValue, days: numOrUndefined(v) } })} />
+            <TextField label={t('Anzahl Tage')} type="number" value={numText(s.defaultValue.days)} onChange={(_, v) => set({ defaultValue: { ...s.defaultValue, days: numOrUndefined(v) } })} />
           )}
           {s.defaultValue.mode === 'fixed' && kind !== 'choice' && (
-            <TextField label="Wert" value={s.defaultValue.value || ''} onChange={(_, v) => set({ defaultValue: { ...s.defaultValue, value: v || '' } })} />
+            <TextField label={t('Wert')} value={s.defaultValue.value || ''} onChange={(_, v) => set({ defaultValue: { ...s.defaultValue, value: v || '' } })} />
           )}
           {s.defaultValue.mode === 'fixed' && kind === 'choice' && field && (
             <Dropdown
-              label="Wert"
+              label={t('Wert')}
               selectedKey={s.defaultValue.value}
               options={field.choices.map((c) => ({ key: c, text: c }))}
               onChange={(_, o) => o && set({ defaultValue: { ...s.defaultValue, value: String(o.key) } })}
@@ -473,7 +476,7 @@ const FieldProperties: React.FC<IPropertiesPanelProps & { name: string }> = (p) 
           {s.defaultValue.mode === 'formula' && (
             <>
               <label htmlFor={`formula-${p.name}`} className={styles.groupLegend} style={{ padding: 0 }}>
-                Formel (JavaScript-Ausdruck)
+                {t('Formel (JavaScript-Ausdruck)')}
               </label>
               <textarea
                 id={`formula-${p.name}`}
@@ -482,7 +485,7 @@ const FieldProperties: React.FC<IPropertiesPanelProps & { name: string }> = (p) 
                 value={s.defaultValue.formula || ''}
                 onChange={(e) => set({ defaultValue: { ...s.defaultValue, formula: e.target.value } })}
               />
-              <span className={styles.hint}>{FORMULA_HELP}</span>
+              <span className={styles.hint}>{FORMULA_HELP()}</span>
             </>
           )}
           {previewText && <div className={preview.error ? `${styles.resultOk} ${styles.resultError}` : styles.resultOk}>{previewText}</div>}
@@ -490,9 +493,9 @@ const FieldProperties: React.FC<IPropertiesPanelProps & { name: string }> = (p) 
       )}
 
       <Stack horizontal wrap tokens={{ childrenGap: 8 }}>
-        <DefaultButton text="Nach oben" iconProps={{ iconName: 'Up' }} onClick={() => p.onChange(moveFieldBy(def, p.name, -1))} />
-        <DefaultButton text="Nach unten" iconProps={{ iconName: 'Down' }} onClick={() => p.onChange(moveFieldBy(def, p.name, 1))} />
-        <DefaultButton text="Entfernen" iconProps={{ iconName: 'Delete' }} onClick={() => p.onChange(removeField(def, p.name), 'clear')} />
+        <DefaultButton text={t('Nach oben')} iconProps={{ iconName: 'Up' }} onClick={() => p.onChange(moveFieldBy(def, p.name, -1))} />
+        <DefaultButton text={t('Nach unten')} iconProps={{ iconName: 'Down' }} onClick={() => p.onChange(moveFieldBy(def, p.name, 1))} />
+        <DefaultButton text={t('Entfernen')} iconProps={{ iconName: 'Delete' }} onClick={() => p.onChange(removeField(def, p.name), 'clear')} />
       </Stack>
     </Stack>
   );
@@ -502,9 +505,9 @@ const FieldProperties: React.FC<IPropertiesPanelProps & { name: string }> = (p) 
 export const PropertiesPanel: React.FC<IPropertiesPanelProps> = (p) => {
   const sel = p.selection;
   return (
-    <aside className={`${styles.panel} ${styles.properties}`} aria-label="Eigenschaften">
-      <p className={styles.panelTitle}>Eigenschaften</p>
-      {!sel && <span className={styles.hint}>Feld, Abschnitt oder «Titel und Tabs» anklicken, um es zu bearbeiten.</span>}
+    <aside className={`${styles.panel} ${styles.properties}`} aria-label={t('Eigenschaften')}>
+      <p className={styles.panelTitle}>{t('Eigenschaften')}</p>
+      {!sel && <span className={styles.hint}>{t('Feld, Abschnitt oder «Titel und Tabs» anklicken, um es zu bearbeiten.')}</span>}
       {sel && sel.kind === 'form' && <FormProperties {...p} />}
       {sel && sel.kind === 'section' && <SectionProperties {...p} sectionId={sel.id} />}
       {sel && sel.kind === 'field' && <FieldProperties {...p} name={sel.name} />}

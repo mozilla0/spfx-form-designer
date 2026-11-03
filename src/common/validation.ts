@@ -1,22 +1,23 @@
 import { IFieldSettings, PatternKind } from './model';
 import { FieldValue, ISpField, isEmptyValue } from './spTypes';
 import { toIsoDate } from './dateUtils';
+import { t } from './i18n';
 
-export const PATTERNS: Record<Exclude<PatternKind, 'none' | 'custom'>, { re: RegExp; label: string; message: string }> = {
+export const PATTERNS: Record<Exclude<PatternKind, 'none' | 'custom'>, { re: RegExp; label: () => string; message: () => string }> = {
   email: {
     re: /^[^\s@]+@[^\s@]+\.[^\s@]+$/,
-    label: 'E-Mail-Adresse',
-    message: 'Bitte eine gültige E-Mail-Adresse eingeben.'
+    label: () => t('E-Mail-Adresse'),
+    message: () => t('Bitte eine gültige E-Mail-Adresse eingeben.')
   },
   phoneCH: {
     re: /^(\+41|0041|0)\s?[1-9]\d(\s?\d){7}$/,
-    label: 'Telefonnummer (CH)',
-    message: 'Bitte eine Schweizer Telefonnummer eingeben, z. B. 041 123 45 67.'
+    label: () => t('Telefonnummer (CH)'),
+    message: () => t('Bitte eine Schweizer Telefonnummer eingeben, z. B. 041 123 45 67.')
   },
   plzCH: {
     re: /^[1-9]\d{3}$/,
-    label: 'Postleitzahl (CH)',
-    message: 'Bitte eine vierstellige Postleitzahl eingeben.'
+    label: () => t('Postleitzahl (CH)'),
+    message: () => t('Bitte eine vierstellige Postleitzahl eingeben.')
   }
 };
 
@@ -29,7 +30,7 @@ export function validateFieldValue(field: ISpField, settings: IFieldSettings, va
   const custom = (fallback: string): string => rule.message || fallback;
 
   if (required && isEmptyValue(value)) {
-    return 'Dieses Feld ist erforderlich.';
+    return t('Dieses Feld ist erforderlich.');
   }
   if (isEmptyValue(value)) {
     return '';
@@ -37,10 +38,10 @@ export function validateFieldValue(field: ISpField, settings: IFieldSettings, va
 
   if ((field.kind === 'text' || field.kind === 'note') && typeof value === 'string') {
     if (rule.minLength !== undefined && rule.minLength !== null && value.length < rule.minLength) {
-      return custom(`Mindestens ${rule.minLength} Zeichen eingeben.`);
+      return custom(t('Mindestens {0} Zeichen eingeben.', rule.minLength));
     }
     if (rule.maxLength !== undefined && rule.maxLength !== null && value.length > rule.maxLength) {
-      return custom(`Höchstens ${rule.maxLength} Zeichen erlaubt (aktuell ${value.length}).`);
+      return custom(t('Höchstens {0} Zeichen erlaubt (aktuell {1}).', rule.maxLength, value.length));
     }
     if (rule.pattern === 'custom' && rule.regex) {
       let re: RegExp;
@@ -49,15 +50,15 @@ export function validateFieldValue(field: ISpField, settings: IFieldSettings, va
         // eslint-disable-next-line @rushstack/security/no-unsafe-regexp
         re = new RegExp(rule.regex);
       } catch {
-        return 'Ungültiger regulärer Ausdruck in der Feldkonfiguration.';
+        return t('Ungültiger regulärer Ausdruck in der Feldkonfiguration.');
       }
       if (!re.test(value)) {
-        return custom('Ungültiges Format.');
+        return custom(t('Ungültiges Format.'));
       }
     } else if (rule.pattern !== 'none' && rule.pattern !== 'custom') {
       const p = PATTERNS[rule.pattern];
       if (p && !p.re.test(value)) {
-        return custom(p.message);
+        return custom(p.message());
       }
     }
   }
@@ -65,13 +66,13 @@ export function validateFieldValue(field: ISpField, settings: IFieldSettings, va
   if (field.kind === 'number' && typeof value === 'string') {
     const n = Number(value);
     if (isNaN(n)) {
-      return custom('Bitte eine Zahl eingeben.');
+      return custom(t('Bitte eine Zahl eingeben.'));
     }
     if (rule.min !== undefined && rule.min !== null && n < rule.min) {
-      return custom(`Der Wert muss mindestens ${rule.min} sein.`);
+      return custom(t('Der Wert muss mindestens {0} sein.', rule.min));
     }
     if (rule.max !== undefined && rule.max !== null && n > rule.max) {
-      return custom(`Der Wert darf höchstens ${rule.max} sein.`);
+      return custom(t('Der Wert darf höchstens {0} sein.', rule.max));
     }
   }
 
@@ -79,13 +80,13 @@ export function validateFieldValue(field: ISpField, settings: IFieldSettings, va
     const day = value.slice(0, 10);
     const now = toIsoDate(new Date());
     if (rule.dateRule === 'notPast' && day < now) {
-      return custom('Das Datum darf nicht in der Vergangenheit liegen.');
+      return custom(t('Das Datum darf nicht in der Vergangenheit liegen.'));
     }
     if (rule.dateRule === 'future' && day <= now) {
-      return custom('Das Datum muss in der Zukunft liegen.');
+      return custom(t('Das Datum muss in der Zukunft liegen.'));
     }
     if (rule.dateRule === 'notFuture' && day > now) {
-      return custom('Das Datum darf nicht in der Zukunft liegen.');
+      return custom(t('Das Datum darf nicht in der Zukunft liegen.'));
     }
   }
 

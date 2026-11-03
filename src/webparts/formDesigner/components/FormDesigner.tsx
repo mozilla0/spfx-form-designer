@@ -39,15 +39,19 @@ import { Palette } from './Palette';
 import { PropertiesPanel } from './PropertiesPanel';
 import { ScriptEditor } from './ScriptEditor';
 import { DeployDialog } from './DeployDialog';
+import { TranslationsEditor } from './TranslationsEditor';
+import { ContentLanguage } from '../../../common/model';
+import { getLanguage } from '../../../common/i18n';
 import * as ds from './designerState';
 import styles from './FormDesigner.module.scss';
+import { t } from '../../../common/i18n';
 
 export interface IFormDesignerProps {
   sp: SpService;
   currentUser: ICurrentUser;
 }
 
-type View = 'design' | 'script' | 'preview';
+type View = 'design' | 'script' | 'translations' | 'preview';
 
 interface IStatus {
   kind: MessageBarType;
@@ -110,6 +114,7 @@ const FormDesigner: React.FC<IFormDesignerProps> = ({ sp, currentUser }) => {
   const [previewKey, setPreviewKey] = React.useState<number>(0);
   const [previewItemId, setPreviewItemId] = React.useState<string>('');
   const [previewValues, setPreviewValues] = React.useState<FieldValues>({});
+  const [previewLanguage, setPreviewLanguage] = React.useState<ContentLanguage>(getLanguage());
   const [drag, setDrag] = React.useState<{ id: string; type: string; label: string } | undefined>(undefined);
   const [overId, setOverId] = React.useState<string | undefined>(undefined);
 
@@ -173,7 +178,7 @@ const FormDesigner: React.FC<IFormDesignerProps> = ({ sp, currentUser }) => {
       setSelection(undefined);
       setDirty(false);
       if (!def) {
-        setStatus({ kind: MessageBarType.info, text: 'Für diesen Inhaltstyp gibt es noch kein Formular. Alle unterstützten Spalten wurden in einen Abschnitt gelegt.' });
+        setStatus({ kind: MessageBarType.info, text: t('Für diesen Inhaltstyp gibt es noch kein Formular. Alle unterstützten Spalten wurden in einen Abschnitt gelegt.') });
       }
     } catch (e) {
       fail(e);
@@ -203,7 +208,7 @@ const FormDesigner: React.FC<IFormDesignerProps> = ({ sp, currentUser }) => {
     try {
       await sp.saveDefinition(listId, ctId, definition, 'draft');
       setDirty(false);
-      setStatus({ kind: MessageBarType.success, text: 'Entwurf gespeichert. Erst «Bereitstellen» macht die Änderungen in der Liste sichtbar.' });
+      setStatus({ kind: MessageBarType.success, text: t('Entwurf gespeichert. Erst «Bereitstellen» macht die Änderungen in der Liste sichtbar.') });
     } catch (e) {
       fail(e);
     }
@@ -233,7 +238,7 @@ const FormDesigner: React.FC<IFormDesignerProps> = ({ sp, currentUser }) => {
     let label = '';
     if (data.type === 'section' && definition) {
       const s = definition.sections.filter((x) => x.id === data.id)[0];
-      label = s ? s.title : 'Abschnitt';
+      label = s ? s.title : t('Abschnitt');
     } else if (data.name) {
       const f = fieldsByName[data.name];
       const settings = definition ? definition.fields[data.name] : undefined;
@@ -328,15 +333,15 @@ const FormDesigner: React.FC<IFormDesignerProps> = ({ sp, currentUser }) => {
   return (
     <div className={styles.designer}>
       <div className={styles.toolbar}>
-        <Dropdown label="Liste" placeholder="Liste wählen" options={listOptions} selectedKey={listId || null} onChange={(_, o) => o && setListId(String(o.key))} styles={{ root: { minWidth: 220 } }} />
-        <Dropdown label="Inhaltstyp" placeholder="Inhaltstyp wählen" options={ctOptions} selectedKey={ctId || null} disabled={!contentTypes.length} onChange={(_, o) => o && setCtId(String(o.key))} styles={{ root: { minWidth: 180 } }} />
+        <Dropdown label={t('Liste')} placeholder={t('Liste wählen')} options={listOptions} selectedKey={listId || null} onChange={(_, o) => o && setListId(String(o.key))} styles={{ root: { minWidth: 220 } }} />
+        <Dropdown label={t('Inhaltstyp')} placeholder={t('Inhaltstyp wählen')} options={ctOptions} selectedKey={ctId || null} disabled={!contentTypes.length} onChange={(_, o) => o && setCtId(String(o.key))} styles={{ root: { minWidth: 180 } }} />
         <ChoiceGroup
-          label="Formulartyp"
+          label={t('Formulartyp')}
           selectedKey={formMode}
           options={[
-            { key: 'new', text: 'Neu' },
-            { key: 'edit', text: 'Bearbeiten' },
-            { key: 'display', text: 'Anzeigen' }
+            { key: 'new', text: t('Neu') },
+            { key: 'edit', text: t('Bearbeiten') },
+            { key: 'display', text: t('Anzeigen') }
           ]}
           styles={{ flexContainer: { display: 'flex', gap: 12 } }}
           onChange={(_, o) => {
@@ -347,27 +352,28 @@ const FormDesigner: React.FC<IFormDesignerProps> = ({ sp, currentUser }) => {
           }}
         />
         <div className={styles.toolbarGrow} />
-        <DefaultButton text={dirty ? 'Entwurf speichern *' : 'Entwurf speichern'} iconProps={{ iconName: 'Save' }} disabled={!definition} onClick={() => saveDraft().catch(fail)} />
-        <PrimaryButton text="Bereitstellen" iconProps={{ iconName: 'CloudUpload' }} disabled={!definition || !ct} onClick={() => setDeployOpen(true)} />
+        <DefaultButton text={dirty ? t('Entwurf speichern') + ' *' : t('Entwurf speichern')} iconProps={{ iconName: 'Save' }} disabled={!definition} onClick={() => saveDraft().catch(fail)} />
+        <PrimaryButton text={t('Bereitstellen')} iconProps={{ iconName: 'CloudUpload' }} disabled={!definition || !ct} onClick={() => setDeployOpen(true)} />
       </div>
 
       {status && (
-        <MessageBar messageBarType={status.kind} onDismiss={() => setStatus(undefined)} dismissButtonAriaLabel="Schliessen">
+        <MessageBar messageBarType={status.kind} onDismiss={() => setStatus(undefined)} dismissButtonAriaLabel={t('Schliessen')}>
           {status.text}
         </MessageBar>
       )}
 
       {definition && (
         <Pivot selectedKey={view} onLinkClick={(item) => item && (item.props.itemKey === 'preview' ? openPreview() : setView(item.props.itemKey as View))} styles={{ root: { padding: '0 16px', background: '#fff' } }}>
-          <PivotItem itemKey="design" headerText="Entwurf" itemIcon="Design" />
-          <PivotItem itemKey="script" headerText="JavaScript" itemIcon="Code" />
-          <PivotItem itemKey="preview" headerText="Vorschau" itemIcon="Preview" />
+          <PivotItem itemKey="design" headerText={t('Entwurf')} itemIcon="Design" />
+          <PivotItem itemKey="script" headerText={t('JavaScript')} itemIcon="Code" />
+          <PivotItem itemKey="translations" headerText={t('Übersetzungen')} itemIcon="Translate" />
+          <PivotItem itemKey="preview" headerText={t('Vorschau')} itemIcon="Preview" />
         </Pivot>
       )}
 
       <div className={styles.body}>
-        {loading && <Spinner size={SpinnerSize.large} label="Formular wird geladen …" />}
-        {!loading && !definition && <span className={styles.hint}>Liste und Inhaltstyp wählen, um dessen Formular zu gestalten.</span>}
+        {loading && <Spinner size={SpinnerSize.large} label={t('Formular wird geladen …')} />}
+        {!loading && !definition && <span className={styles.hint}>{t('Liste und Inhaltstyp wählen, um dessen Formular zu gestalten.')}</span>}
 
         {!loading && definition && view === 'design' && (
           <DndContext sensors={sensors} collisionDetection={collision} onDragStart={onDragStart} onDragOver={onDragOver} onDragEnd={onDragEnd} onDragCancel={() => { setDrag(undefined); setOverId(undefined); }}>
@@ -415,14 +421,29 @@ const FormDesigner: React.FC<IFormDesignerProps> = ({ sp, currentUser }) => {
           />
         )}
 
+        {!loading && definition && view === 'translations' && (
+          <TranslationsEditor definition={definition} fieldsByName={fieldsByName} onChange={(d) => update(d)} />
+        )}
+
         {!loading && definition && view === 'preview' && (
           <div className={styles.preview} style={{ maxWidth: panelPreviewWidth(definition.layout) ? (panelPreviewWidth(definition.layout) as number) + 2 : undefined, margin: '0 auto' }}>
             <div style={{ display: 'flex', gap: 8, alignItems: 'flex-end', padding: '12px 24px 0', flexWrap: 'wrap' }}>
-              <TextField label="Element-ID für die Vorschau (optional)" type="number" value={previewItemId} onChange={(_, v) => setPreviewItemId(v || '')} styles={{ root: { width: 240 } }} />
-              <DefaultButton text="Laden und neu starten" onClick={() => loadPreviewItem().catch(fail)} />
+              <TextField label={t('Element-ID für die Vorschau (optional)')} type="number" value={previewItemId} onChange={(_, v) => setPreviewItemId(v || '')} styles={{ root: { width: 240 } }} />
+              <DefaultButton text={t('Laden und neu starten')} onClick={() => loadPreviewItem().catch(fail)} />
+              <Dropdown
+                label={t('Sprache der Vorschau')}
+                selectedKey={previewLanguage}
+                options={[
+                  { key: 'de', text: t('Deutsch') },
+                  { key: 'en', text: t('Englisch') }
+                ]}
+                styles={{ root: { width: 160 } }}
+                onChange={(_, o) => o && setPreviewLanguage(o.key as ContentLanguage)}
+              />
             </div>
             <FormHost
-              key={`${previewKey}-${formMode}`}
+              key={`${previewKey}-${formMode}-${previewLanguage}`}
+              contentLanguage={previewLanguage}
               definition={definition}
               fields={fields}
               mode={formMode}

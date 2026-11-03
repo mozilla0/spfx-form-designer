@@ -4,6 +4,7 @@ import { FormMode, IFormDefinition } from '../../../common/model';
 import { FieldValues, ICurrentUser, ISpField } from '../../../common/spTypes';
 import { SpService } from '../../../common/spService';
 import { FormHost } from '../../../common/components/FormHost';
+import { t } from '../../../common/i18n';
 
 export interface IFormDesignerRuntimeProps {
   definition: IFormDefinition | undefined;
@@ -23,10 +24,10 @@ const FormDesignerRuntime: React.FC<IFormDesignerRuntimeProps> = (props) => {
     return (
       <Stack tokens={{ childrenGap: 12 }} styles={{ root: { padding: 24 } }}>
         <MessageBar messageBarType={MessageBarType.error}>
-          Das Formular konnte nicht geladen werden. {props.loadError}
+          {t('Das Formular konnte nicht geladen werden.')} {props.loadError}
         </MessageBar>
         <Stack>
-          <DefaultButton text="Schliessen" onClick={props.onClose} styles={{ root: { alignSelf: 'flex-start' } }} />
+          <DefaultButton text={t('Schliessen')} onClick={props.onClose} styles={{ root: { alignSelf: 'flex-start' } }} />
         </Stack>
       </Stack>
     );

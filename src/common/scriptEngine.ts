@@ -2,6 +2,7 @@ import { FormMode } from './model';
 import { FieldValue, ICurrentUser } from './spTypes';
 import { scriptDateHelpers, toIsoDate } from './dateUtils';
 import { SpService } from './spService';
+import { t } from './i18n';
 
 export type MessageKind = 'info' | 'warning' | 'error' | 'success';
 
@@ -47,7 +48,7 @@ export class FormScriptHost {
       // eslint-disable-next-line no-new-func
       runner = new Function('form', `"use strict";\n${script}`) as (form: unknown) => void;
     } catch (e) {
-      this.bridge.reportError(`Syntaxfehler im Formular-Skript: ${(e as Error).message}`);
+      this.bridge.reportError(t('Syntaxfehler im Formular-Skript: {0}', (e as Error).message));
       return;
     }
     this.safe(() => runner(this.createApi()));
@@ -80,8 +81,8 @@ export class FormScriptHost {
           return r;
         }
       } catch (e) {
-        this.bridge.reportError(`Skriptfehler: ${(e as Error).message}`);
-        return 'Das Formular-Skript hat das Speichern wegen eines Fehlers abgebrochen.';
+        this.bridge.reportError(t('Skriptfehler: {0}', (e as Error).message));
+        return t('Das Formular-Skript hat das Speichern wegen eines Fehlers abgebrochen.');
       }
     }
     return '';
@@ -91,7 +92,7 @@ export class FormScriptHost {
     try {
       return fn();
     } catch (e) {
-      this.bridge.reportError(`Skriptfehler: ${(e as Error).message}`);
+      this.bridge.reportError(t('Skriptfehler: {0}', (e as Error).message));
       return undefined;
     }
   }
@@ -101,7 +102,7 @@ export class FormScriptHost {
     const host = this;
     const field = (name: string): unknown => {
       if (!bridge.hasField(name)) {
-        bridge.reportError(`Formular-Skript: Das Feld '${name}' gibt es in diesem Formular nicht.`);
+        bridge.reportError(t("Formular-Skript: Das Feld '{0}' gibt es in diesem Formular nicht.", name));
       }
       return {
         get value(): FieldValue {

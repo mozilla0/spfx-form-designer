@@ -3,7 +3,7 @@
   "solution": {
     "name": "Form Designer",
     "id": "127e8f36-96a7-4e1e-9d88-032019cbe166",
-    "version": "1.2.0.0",
+    "version": "1.3.0.0",
     "includeClientSideAssets": true,
     "skipFeatureDeployment": true,
     "isDomainIsolated": false,
@@ -16,10 +16,10 @@
     },
     "metadata": {
       "shortDescription": {
-        "default": "WYSIWYG-Formulardesigner für SharePoint-Listen"
+        "default": "WYSIWYG form designer for SharePoint lists"
       },
       "longDescription": {
-        "default": "Form Designer gestaltet Formulare für SharePoint-Listen per Drag-and-drop – mit Tabs, Abschnitten, Validierung, Standardwerten und Formular-Skript – und stellt sie als List Form Customizer bereit."
+        "default": "Form Designer lets you design SharePoint list forms with drag and drop – tabs, sections, validation, default values, form script, header with icon and logo, panel or dialog display – in German and English, and deploys them as a list form customizer."
       },
       "screenshotPaths": [],
       "videoUrl": "",
@@ -28,9 +28,9 @@
     "features": [
       {
         "title": "Form Designer",
-        "description": "Designer-Webpart, Formular-Runtime (List Form Customizer) und Panel-Erweiterung (ListView Command Set).",
+        "description": "Designer web part, form runtime (list form customizer) and panel extension (ListView command set).",
         "id": "c6c72754-4148-44d7-9db5-d5cd1987492c",
-        "version": "1.2.0.0"
+        "version": "1.3.0.0"
       }
     ]
   },

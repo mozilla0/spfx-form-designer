@@ -9,7 +9,7 @@
   "requiresCustomScript": false,
   "items": {
     "FD_DIAG": {
-      "title": { "default": "Form Designer: Diagnose" },
+      "title": { "default": "Form Designer: Diagnostics", "de-DE": "Form Designer: Diagnose", "de-CH": "Form Designer: Diagnose" },
       "type": "command"
     }
   }

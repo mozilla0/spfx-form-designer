@@ -1,4 +1,5 @@
 import { IFormLayout, PanelSize } from './model';
+import { t } from './i18n';
 
 /**
  * Experimentell: verbreitert das SharePoint-Panel, in dem die Runtime gerendert wird.
@@ -6,14 +7,14 @@ import { IFormLayout, PanelSize } from './model';
  * überschreibt dessen Breite. Wird kein Panel gefunden, bleibt alles unverändert.
  */
 
-export const PANEL_SIZES: Array<{ key: PanelSize; text: string; width?: number }> = [
-  { key: 'default', text: 'Standard (SharePoint)' },
-  { key: 'small', text: 'Schmal (480 px)', width: 480 },
-  { key: 'medium', text: 'Mittel (640 px)', width: 640 },
-  { key: 'large', text: 'Breit (880 px)', width: 880 },
-  { key: 'xlarge', text: 'Sehr breit (1100 px)', width: 1100 },
-  { key: 'wide', text: 'Fast ganze Breite (90 %)' },
-  { key: 'custom', text: 'Eigene Breite' }
+export const PANEL_SIZES: Array<{ key: PanelSize; text: () => string; width?: number }> = [
+  { key: 'default', text: () => t('Standard') },
+  { key: 'small', text: () => t('Schmal (480 px)'), width: 480 },
+  { key: 'medium', text: () => t('Mittel (640 px)'), width: 640 },
+  { key: 'large', text: () => t('Breit (880 px)'), width: 880 },
+  { key: 'xlarge', text: () => t('Sehr breit (1100 px)'), width: 1100 },
+  { key: 'wide', text: () => t('Fast ganze Breite (90 %)') },
+  { key: 'custom', text: () => t('Eigene Breite') }
 ];
 
 /** CSS-Breite für das Panel oder undefined für die Standardbreite. */

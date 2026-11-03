@@ -100,10 +100,17 @@ export interface IFormHeader {
   style?: HeaderStyle;
 }
 
+/** Sprache der Formularinhalte. */
+export type ContentLanguage = 'de' | 'en';
+
 export interface IFormDefinition {
   schemaVersion: 1;
   layout?: IFormLayout;
   header?: IFormHeader;
+  /** Sprache, in der Titel, Bezeichnungen usw. im Designer erfasst sind. */
+  baseLanguage?: ContentLanguage;
+  /** Übersetzungen der Formularinhalte je Sprache, Schlüssel siehe translate.ts. */
+  translations?: Partial<Record<ContentLanguage, Record<string, string>>>;
   titles: Record<FormMode, string>;
   tabs: ITab[];
   sections: ISection[];
@@ -197,6 +204,8 @@ export function normalizeDefinition(def: IFormDefinition): IFormDefinition {
     fields,
     script: def.script || '',
     layout: { panelSize: 'default', ...(def.layout || {}) },
-    header: { imagePosition: 'left', style: 'plain', ...(def.header || {}) }
+    header: { imagePosition: 'left', style: 'plain', ...(def.header || {}) },
+    baseLanguage: def.baseLanguage || 'de',
+    translations: def.translations || {}
   };
 }

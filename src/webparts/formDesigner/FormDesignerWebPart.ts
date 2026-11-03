@@ -6,11 +6,17 @@ import { BaseClientSideWebPart } from '@microsoft/sp-webpart-base';
 
 import { SpService } from '../../common/spService';
 import FormDesigner, { IFormDesignerProps } from './components/FormDesigner';
+import { setCulture } from '../../common/i18n';
 
 export interface IFormDesignerWebPartProps {}
 
 /** Webpart mit dem Form Designer. Gehört auf eine Seite, auf die nur Website-Besitzer Zugriff haben. */
 export default class FormDesignerWebPart extends BaseClientSideWebPart<IFormDesignerWebPartProps> {
+  protected onInit(): Promise<void> {
+    setCulture(this.context.pageContext.cultureInfo.currentUICultureName);
+    return super.onInit();
+  }
+
   public render(): void {
     const ctx = this.context.pageContext;
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
