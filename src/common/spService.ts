@@ -37,6 +37,8 @@ const JSON_HEADERS: Record<string, string> = {
 export interface IListInfo {
   id: string;
   title: string;
+  /** Serverrelativer Pfad der Liste, z. B. /sites/x/Lists/Auftraege */
+  url: string;
 }
 
 export interface IContentTypeInfo {
@@ -115,8 +117,8 @@ export class SpService {
   // ---------- Listen, Inhaltstypen, Spalten ----------
 
   public async getLists(): Promise<IListInfo[]> {
-    const r = await this.get('/_api/web/lists?$select=Id,Title,BaseTemplate,Hidden&$filter=Hidden eq false and BaseType eq 0&$orderby=Title');
-    return (r.value as any[]).map((l) => ({ id: l.Id, title: l.Title }));
+    const r = await this.get('/_api/web/lists?$select=Id,Title,BaseTemplate,Hidden,RootFolder/ServerRelativeUrl&$expand=RootFolder&$filter=Hidden eq false and BaseType eq 0&$orderby=Title');
+    return (r.value as any[]).map((l) => ({ id: l.Id, title: l.Title, url: l.RootFolder ? l.RootFolder.ServerRelativeUrl : '' }));
   }
 
   public async getContentTypes(listId: string): Promise<IContentTypeInfo[]> {

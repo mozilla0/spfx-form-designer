@@ -6,6 +6,8 @@ import { displayModeOf, IFormDefinition, IRuntimeProperties, normalizeDefinition
 import { IFormRequest } from '../../common/formUrl';
 import { fdLog, getDebugMode, registerList, unregisterList } from '../../common/interceptor';
 import { panelCssWidth } from '../../common/panelSize';
+import { readUrlParams } from '../../common/urlPrefill';
+import { FormMode } from '../../common/model';
 import { IContentTypeInfo, SpService } from '../../common/spService';
 import { ICurrentUser } from '../../common/spTypes';
 import { IListFormConfig, isOverlayOpen, openFormOverlay } from '../../common/components/FormOverlay';
@@ -70,6 +72,7 @@ export default class FormDesignerPanelCommandSet extends BaseListViewCommandSet<
     this.loadConfigs()
       .then(() => {
         this._ready = true;
+        this.openFromPageUrl();
         fdLog(`Bereit: ${this._configs.length} Inhaltstyp(en) mit Form-Designer-Formular`, this._configs.map((c) => c.contentTypeId));
       })
       .catch((e: Error) => {
@@ -120,7 +123,34 @@ export default class FormDesignerPanelCommandSet extends BaseListViewCommandSet<
     this._configs = configs;
   }
 
-  private handle(req: IFormRequest, via: string): boolean {
+  /** Öffnet ein Formular, wenn die Listenansicht mit ?fdOpen=new|edit|display (&fdId=) aufgerufen wurde. */
+  private openFromPageUrl(): void {
+    const params = readUrlParams(window.location.href);
+    const open = (params.fdOpen || params.fdopen || '').toLowerCase();
+    const modes: Record<string, FormMode> = { new: 'new', edit: 'edit', display: 'display' };
+    const mode = modes[open];
+    if (!mode) {
+      return;
+    }
+    const id = Number(params.fdId || params.fdid || 0);
+    // Parameter entfernen, damit das Formular beim Neuladen nicht erneut aufgeht.
+    try {
+      const clean = new URL(window.location.href);
+      ['fdOpen', 'fdopen', 'fdId', 'fdid'].forEach((k) => clean.searchParams.delete(k));
+      Object.keys(params)
+        .filter((k) => k.toLowerCase().indexOf('fd_') === 0)
+        .forEach((k) => clean.searchParams.delete(k));
+      window.history.replaceState(window.history.state, '', clean.href);
+    } catch {
+      // ignorieren
+    }
+    if (mode !== 'new' && !id) {
+      return;
+    }
+    this.handle({ mode, url: window.location.href, listId: this._listId, itemId: id || undefined }, 'fdOpen', params);
+  }
+
+  private handle(req: IFormRequest, via: string, extraParams?: Record<string, string>): boolean {
     if (!this._ready || !this._configs.length) {
       return false;
     }
@@ -138,7 +168,8 @@ export default class FormDesignerPanelCommandSet extends BaseListViewCommandSet<
     }
     const layout = candidates[0].definition.layout;
     const mode = displayModeOf(layout, req.mode);
-    if (mode === 'page') {
+    // Ein expliziter Aufruf per fdOpen öffnet auch dann ein Panel, wenn «Ganze Seite» eingestellt ist.
+    if (mode === 'page' && via !== 'fdOpen') {
       return false;
     }
     openFormOverlay({
@@ -147,8 +178,9 @@ export default class FormDesignerPanelCommandSet extends BaseListViewCommandSet<
       request: req,
       configs: this._configs,
       currentUser: this.currentUser(),
-      displayMode: mode,
-      cssWidth: panelCssWidth(layout)
+      displayMode: mode === 'page' ? 'panel' : mode,
+      cssWidth: panelCssWidth(layout),
+      urlParams: { ...readUrlParams(req.url), ...(extraParams || {}) }
     });
     fdLog(`Formular «${req.mode}» als ${mode === 'dialog' ? 'Dialog' : 'Panel'} geöffnet (${via})`);
     return true;

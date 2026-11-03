@@ -24,6 +24,8 @@ export interface IFormOverlayProps {
   displayMode: Exclude<DisplayMode, 'page'>;
   cssWidth: string | undefined;
   onClose: (saved: boolean) => void;
+  /** Query-Parameter für Vorbelegung und form.urlParams. */
+  urlParams?: Record<string, string>;
 }
 
 interface ILoaded {
@@ -109,6 +111,7 @@ export const FormOverlay: React.FC<IFormOverlayProps> = (p) => {
           }}
           onCancel={() => p.onClose(false)}
           onRequestEdit={p.request.itemId ? () => setMode('edit') : undefined}
+          urlParams={p.urlParams}
         />
       )}
     </div>

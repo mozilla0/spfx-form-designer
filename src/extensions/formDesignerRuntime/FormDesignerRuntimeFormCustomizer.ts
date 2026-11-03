@@ -8,6 +8,7 @@ import { FormMode, IFormDefinition, IRuntimeProperties, normalizeDefinition } fr
 import { SpService } from '../../common/spService';
 import { FieldValues, ICurrentUser, ISpField } from '../../common/spTypes';
 import { applyPanelWidth, panelCssWidth } from '../../common/panelSize';
+import { readUrlParams } from '../../common/urlPrefill';
 import FormDesignerRuntime, { IFormDesignerRuntimeProps } from './components/FormDesignerRuntime';
 import { setCulture, t } from '../../common/i18n';
 
@@ -66,7 +67,8 @@ export default class FormDesignerRuntimeFormCustomizer extends BaseFormCustomize
       sp: this._sp,
       onSubmit: (values: FieldValues) => this.save(values),
       onClose: () => this.formClosed(),
-      onRequestEdit: this.context.itemId ? () => this.switchToEdit() : undefined
+      onRequestEdit: this.context.itemId ? () => this.switchToEdit() : undefined,
+      urlParams: readUrlParams(window.location.href)
     });
     ReactDOM.render(element, this.domElement);
 

@@ -17,6 +17,7 @@ export interface IFormDesignerRuntimeProps {
   onSubmit: (values: FieldValues) => Promise<void>;
   onClose: () => void;
   onRequestEdit?: () => void;
+  urlParams: Record<string, string>;
 }
 
 const FormDesignerRuntime: React.FC<IFormDesignerRuntimeProps> = (props) => {
@@ -44,6 +45,7 @@ const FormDesignerRuntime: React.FC<IFormDesignerRuntimeProps> = (props) => {
       onSubmit={props.onSubmit}
       onCancel={props.onClose}
       onRequestEdit={props.onRequestEdit}
+      urlParams={props.urlParams}
     />
   );
 };

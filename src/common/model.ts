@@ -111,6 +111,8 @@ export interface IFormDefinition {
   baseLanguage?: ContentLanguage;
   /** Übersetzungen der Formularinhalte je Sprache, Schlüssel siehe translate.ts. */
   translations?: Partial<Record<ContentLanguage, Record<string, string>>>;
+  /** Vorbelegung über URL-Parameter (fd_<Feld>=Wert). Standard: nur im Formular «Neu». */
+  urlPrefill?: 'off' | 'new' | 'newAndEdit';
   titles: Record<FormMode, string>;
   tabs: ITab[];
   sections: ISection[];
@@ -206,6 +208,7 @@ export function normalizeDefinition(def: IFormDefinition): IFormDefinition {
     layout: { panelSize: 'default', ...(def.layout || {}) },
     header: { imagePosition: 'left', style: 'plain', ...(def.header || {}) },
     baseLanguage: def.baseLanguage || 'de',
-    translations: def.translations || {}
+    translations: def.translations || {},
+    urlPrefill: def.urlPrefill || 'new'
   };
 }

@@ -3,7 +3,7 @@
   "solution": {
     "name": "Form Designer",
     "id": "127e8f36-96a7-4e1e-9d88-032019cbe166",
-    "version": "1.3.0.0",
+    "version": "1.4.0.0",
     "includeClientSideAssets": true,
     "skipFeatureDeployment": true,
     "isDomainIsolated": false,
@@ -30,7 +30,7 @@
         "title": "Form Designer",
         "description": "Designer web part, form runtime (list form customizer) and panel extension (ListView command set).",
         "id": "c6c72754-4148-44d7-9db5-d5cd1987492c",
-        "version": "1.3.0.0"
+        "version": "1.4.0.0"
       }
     ]
   },

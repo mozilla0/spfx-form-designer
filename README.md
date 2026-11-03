@@ -27,6 +27,7 @@ All three ship in the same package (`form-designer.sppkg`) so they always share 
 - Default values in the New form: fixed value, today, today + n (working) days, next working day, end of month, current user, JavaScript formula
 - Form script with a `form` API (see below)
 - Preview that runs the form script, optionally with an existing item
+- Prefill via URL parameters, with link generator
 - Display mode per form type: panel, dialog or full page, with configurable width
 - Multilingual: user interface in German and English, translatable form content
 - Deployment with backup of the previous configuration and "Reset"
@@ -57,6 +58,114 @@ Managed metadata and hyperlinks are saved via `ValidateUpdateListItem`; dependin
 **Form content:** in the designer's "Translations" view you can translate titles, subtitle, tabs, sections, field labels, help texts and custom error messages, and set the language in which the texts were entered. If a translation is missing, the entered text is shown. The preview lets you switch languages.
 
 Technically, the German texts double as keys (`t('Speichern')`); the English texts live in `src/common/i18n.en.ts`. A unit test checks that every text has a translation.
+
+## Prefill via URL
+
+Fields can be prefilled with URL parameters: `fd_<InternalName>=value`. The field name is case-insensitive.
+
+```
+…/_layouts/15/SPListForm.aspx?PageType=8&List={ListId}&ContentTypeId=…&fd_Title=Heating&fd_Priority=High&fd_DueDate=today+10
+…/Lists/Orders?fdOpen=new&fd_Title=Heating        (list view, opens the form in the panel/dialog)
+…/Lists/Orders?fdOpen=edit&fdId=8                 (edit item 8)
+```
+
+| Column type | Format |
+|---|---|
+| Text, number, choice | Value, e.g. `Open` |
+| Multiple choice | `A;B` |
+| Yes/No | `yes`/`no`, `ja`/`nein`, `1`/`0`, `true`/`false` |
+| Date | `YYYY-MM-DD`, `today`, `today+7`, `today-1` |
+| Date and time | `YYYY-MM-DDTHH:mm` or as date |
+| Person (single/multiple) | E-mail address or login name; multiple separated by `;` |
+| Lookup (single/multiple) | ID or title; multiple separated by `;` |
+| Managed metadata | Term or term ID; multiple separated by `;` |
+| Hyperlink or picture | `URL` or `URL|description` |
+
+- Setting under "Title and tabs" › "Prefill via URL": off, New form only (default), or New and Edit.
+- Order: default values → URL parameters → form script. Invalid values are shown as a warning in the form.
+- All URL parameters are available in the script as `form.urlParams`, e.g. `form.urlParams.source`.
+- "Create link" in the designer builds a link with prefilled values (form page or list view with panel).
+- `fdOpen` is removed from the address bar after opening so the form does not reopen on reload.
+- The designer preview has a field for URL parameters.
+
+### Examples
+
+The examples use a list "Orders" at `https://contoso.sharepoint.com/sites/service` with the columns `Title`, `Customer` (lookup), `Priority` (choice), `DueDate` (date), `Owners` (person, multiple), `Location` (managed metadata) and `Channel` (choice).
+
+**1. Simple prefill link**
+
+```
+https://contoso.sharepoint.com/sites/service/Lists/Orders?fdOpen=new&fd_Title=Annual%20heat%20pump%20service&fd_Priority=High&fd_DueDate=today+5
+```
+
+Opens the list and the New form in the panel: title "Annual heat pump service", priority "High", due in five days. Spaces and special characters must be URL-encoded (`%20`, …) – "Create link" in the designer does this automatically.
+
+**2. People, lookups and managed metadata**
+
+```
+…/Lists/Orders?fdOpen=new&fd_Customer=12&fd_Owners=anna.example@contoso.com;peter.sample@contoso.com&fd_Location=Zurich
+```
+
+`fd_Customer=12` selects the customer with ID 12 (or use the title, e.g. `fd_Customer=Contoso%20Ltd`). Separate multiple people with `;`; the location takes a term or term ID.
+
+**3. Button in another list (column formatting)**
+
+Add a column with this formatting to the customer list. Each row gets an "Create order" link that opens the form prefilled with that customer:
+
+```json
+{
+  "$schema": "https://developer.microsoft.com/json-schemas/sp/v2/column-formatting.schema.json",
+  "elmType": "a",
+  "txtContent": "Create order",
+  "attributes": {
+    "href": "='/sites/service/Lists/Orders?fdOpen=new&fd_Customer=' + [$ID]",
+    "target": "_self",
+    "class": "ms-fontColor-themePrimary ms-fontWeight-semibold"
+  }
+}
+```
+
+**4. Link in a Power Automate e-mail**
+
+New form with the subject of an incoming e-mail as title:
+
+```
+concat('https://contoso.sharepoint.com/sites/service/Lists/Orders?fdOpen=new&source=mail&fd_Title=', encodeUriComponent(triggerOutputs()?['body/subject']))
+```
+
+Open an existing item for editing:
+
+```
+https://contoso.sharepoint.com/sites/service/Lists/Orders?fdOpen=edit&fdId=@{triggerOutputs()?['body/ID']}
+```
+
+**5. Using URL parameters in the form script**
+
+Parameters without `fd_` do not prefill fields but are available in the script, e.g. to track the origin or lock values:
+
+```js
+form.onReady(() => {
+  // Opened from the e-mail in example 4
+  if (form.urlParams.source === 'mail') {
+    form.field('Channel').value = 'E-mail';
+    form.field('Channel').disabled = true;
+  }
+  // Do not allow changing a prefilled customer
+  if (form.urlParams.fd_Customer) {
+    form.field('Customer').disabled = true;
+  }
+});
+```
+
+`form.urlParams` keeps the spelling used in the URL.
+
+**6. Form page instead of the panel**
+
+```
+https://contoso.sharepoint.com/sites/service/_layouts/15/SPListForm.aspx?PageType=8&List=%7B<ListId>%7D&ContentTypeId=<ContentTypeId>&RootFolder=%2Fsites%2Fservice%2FLists%2FOrders&fd_Title=Test
+```
+
+Useful if the panel extension is not registered on the list or the form should open in its own tab. "Create link" fills in the list and content type IDs (clear the option "Open via the list view").
 
 ## Header
 
@@ -135,6 +244,7 @@ form.onBeforeSave(async () => {
 | `form.onReady(fn)` · `form.onBeforeSave(fn)` | Load and save |
 | `form.showMessage(text, kind)` | `'info'`, `'warning'`, `'error'`, `'success'` |
 | `form.type` · `form.title` | Form type and title |
+| `form.urlParams` | All query parameters of the form URL |
 | `form.date` | `today`, `addDays`, `addWorkdays`, `endOfMonth`, `format`, `iso` |
 | `form.currentUser` · `form.sp.get(path)` / `.post(path, body)` | Current user and REST access to the site |
 

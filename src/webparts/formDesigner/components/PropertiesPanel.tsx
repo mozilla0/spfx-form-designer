@@ -30,6 +30,7 @@ export interface IPropertiesPanelProps {
   currentUser: ICurrentUser;
   onChange: (def: IFormDefinition, selection?: SelectionChange) => void;
   onUploadImage: (file: File) => Promise<string>;
+  onOpenLinkBuilder: () => void;
 }
 
 function modeLabel(m: FormMode): string {
@@ -200,6 +201,20 @@ const FormProperties: React.FC<IPropertiesPanelProps> = (p) => {
         description={t('Platzhalter mit internem Feldnamen in geschweiften Klammern, z. B. {Title}. Oben den Formulartyp wechseln, um die anderen Titel zu bearbeiten. Per Skript mit form.title überschreibbar.')}
       />
       <HeaderSettings {...p} />
+      <Group legend={t('Vorbelegung per URL')}>
+        <Dropdown
+          ariaLabel={t('Vorbelegung per URL')}
+          selectedKey={def.urlPrefill || 'new'}
+          options={[
+            { key: 'off', text: t('Aus') },
+            { key: 'new', text: t('Im Formular «Neu»') },
+            { key: 'newAndEdit', text: t('In «Neu» und «Bearbeiten»') }
+          ]}
+          onChange={(_, o) => o && p.onChange({ ...def, urlPrefill: o.key as IFormDefinition['urlPrefill'] })}
+        />
+        <span className={styles.hint}>{t('Parameter fd_<InternerName>=Wert in der URL belegen Felder vor, z. B. ?fd_Title=Heizung. Danach läuft das Formular-Skript; alle Parameter stehen dort als form.urlParams zur Verfügung.')}</span>
+        <DefaultButton text={t('Link erzeugen')} iconProps={{ iconName: 'Link' }} onClick={p.onOpenLinkBuilder} />
+      </Group>
       <Group legend={t('Darstellung aus der Listenansicht')}>
         {(['new', 'edit', 'display'] as FormMode[]).map((m) => (
           <Dropdown

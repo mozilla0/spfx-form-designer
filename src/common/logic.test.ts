@@ -1,4 +1,4 @@
-import { addWorkdays, endOfMonth, parseSwissDate, toIsoDate } from './dateUtils';
+import { addDays, addWorkdays, endOfMonth, parseSwissDate, toIsoDate } from './dateUtils';
 import { validateFieldValue } from './validation';
 import { computeDefault } from './defaults';
 import { createFieldSettings } from './model';
@@ -13,6 +13,7 @@ import { formatDate, parseDate } from './dateUtils';
 import { isEmptyValue, valueToText } from './spTypes';
 import { localizeDefinition } from './translate';
 import { createDefinition } from './model';
+import { buildFormLink, parseDateParam, parseSimpleValue, prefillParams, readUrlParams } from './urlPrefill';
 /* eslint-disable @typescript-eslint/no-require-imports, @typescript-eslint/no-explicit-any */
 const fs: any = require('fs');
 const path: any = require('path');
@@ -88,6 +89,7 @@ describe('scriptEngine', () => {
     const errors: string[] = [];
     const bridge: IScriptHostBridge = {
       mode: 'edit',
+      urlParams: {},
       hasField: () => true,
       fieldKind: () => 'text',
       getValue: (n) => values[n] as string,
@@ -224,5 +226,27 @@ describe('Übersetzung der Formularinhalte', () => {
     expect(localized.tabs[0].label).toBe('General');
     expect(localized.fields.Title.label).toBeUndefined();
     expect(localizeDefinition(def, 'de').titles.new).toBe('Neuer Auftrag');
+  });
+});
+
+describe('URL-Vorbelegung', () => {
+  it('liest fd_-Parameter unabhängig von Gross-/Kleinschreibung', () => {
+    const params = readUrlParams('https://contoso.sharepoint.com/_layouts/15/SPListForm.aspx?PageType=8&FD_Title=Heizung%20Service&fd_Status=Offen');
+    expect(prefillParams(params)).toEqual({ title: 'Heizung Service', status: 'Offen' });
+  });
+  it('wandelt einfache Werte um', () => {
+    const f = (kind: ISpField['kind']): ISpField => field(kind);
+    expect(parseSimpleValue(f('boolean'), 'ja').value).toBe(true);
+    expect(parseSimpleValue(f('multichoice'), 'Offen;Erledigt').value).toEqual(['Offen', 'Erledigt']);
+    expect(parseSimpleValue(f('choice'), 'Unbekannt').error).toBeDefined();
+    expect(parseSimpleValue(f('date'), '2026-12-24').value).toBe('2026-12-24');
+    expect(parseSimpleValue(f('datetime'), '2026-12-24 14:30').value).toBe('2026-12-24T14:30');
+    expect(parseSimpleValue(f('url'), 'https://example.com|Beispiel').value).toEqual({ url: 'https://example.com', description: 'Beispiel' });
+    expect(parseDateParam('today+1')).toBe(toIsoDate(addDays(new Date(), 1)));
+  });
+  it('baut Links auf Formularseite und Listenansicht', () => {
+    const opts = { webUrl: 'https://contoso.sharepoint.com/sites/test', listId: 'abc', listUrl: '/sites/test/Lists/Orders', contentTypeId: '0x0100', values: { Title: 'A & B', Status: '' } };
+    expect(buildFormLink({ ...opts, viaListPanel: true })).toBe('https://contoso.sharepoint.com/sites/test/Lists/Orders?fdOpen=new&fd_Title=A%20%26%20B');
+    expect(buildFormLink({ ...opts, viaListPanel: false })).toContain('/_layouts/15/SPListForm.aspx?PageType=8&List=%7Babc%7D');
   });
 });

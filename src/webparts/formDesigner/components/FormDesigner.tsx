@@ -40,6 +40,8 @@ import { PropertiesPanel } from './PropertiesPanel';
 import { ScriptEditor } from './ScriptEditor';
 import { DeployDialog } from './DeployDialog';
 import { TranslationsEditor } from './TranslationsEditor';
+import { LinkBuilder } from './LinkBuilder';
+import { readUrlParams } from '../../../common/urlPrefill';
 import { ContentLanguage } from '../../../common/model';
 import { getLanguage } from '../../../common/i18n';
 import * as ds from './designerState';
@@ -114,6 +116,8 @@ const FormDesigner: React.FC<IFormDesignerProps> = ({ sp, currentUser }) => {
   const [previewKey, setPreviewKey] = React.useState<number>(0);
   const [previewItemId, setPreviewItemId] = React.useState<string>('');
   const [previewValues, setPreviewValues] = React.useState<FieldValues>({});
+  const [linkBuilderOpen, setLinkBuilderOpen] = React.useState<boolean>(false);
+  const [previewQuery, setPreviewQuery] = React.useState<string>('');
   const [previewLanguage, setPreviewLanguage] = React.useState<ContentLanguage>(getLanguage());
   const [drag, setDrag] = React.useState<{ id: string; type: string; label: string } | undefined>(undefined);
   const [overId, setOverId] = React.useState<string | undefined>(undefined);
@@ -407,7 +411,7 @@ const FormDesigner: React.FC<IFormDesignerProps> = ({ sp, currentUser }) => {
               onSelect={setSelection}
               onTabChange={setActiveTab}
             />
-            <PropertiesPanel definition={definition} fieldsByName={fieldsByName} selection={selection} formMode={formMode} currentUser={currentUser} onChange={(d, s) => update(d, s)} onUploadImage={(file) => sp.uploadImage(file)} />
+            <PropertiesPanel definition={definition} fieldsByName={fieldsByName} selection={selection} formMode={formMode} currentUser={currentUser} onChange={(d, s) => update(d, s)} onUploadImage={(file) => sp.uploadImage(file)} onOpenLinkBuilder={() => setLinkBuilderOpen(true)} />
             <DragOverlay>{drag ? <div className={styles.overlayCard}>{drag.label}</div> : null}</DragOverlay>
           </DndContext>
         )}
@@ -430,6 +434,14 @@ const FormDesigner: React.FC<IFormDesignerProps> = ({ sp, currentUser }) => {
             <div style={{ display: 'flex', gap: 8, alignItems: 'flex-end', padding: '12px 24px 0', flexWrap: 'wrap' }}>
               <TextField label={t('Element-ID für die Vorschau (optional)')} type="number" value={previewItemId} onChange={(_, v) => setPreviewItemId(v || '')} styles={{ root: { width: 240 } }} />
               <DefaultButton text={t('Laden und neu starten')} onClick={() => loadPreviewItem().catch(fail)} />
+              <TextField
+                label={t('URL-Parameter für die Vorschau')}
+                placeholder="fd_Title=Test&fd_Status=Offen"
+                value={previewQuery}
+                onChange={(_, v) => setPreviewQuery(v || '')}
+                onBlur={() => setPreviewKey((k) => k + 1)}
+                styles={{ root: { width: 320 } }}
+              />
               <Dropdown
                 label={t('Sprache der Vorschau')}
                 selectedKey={previewLanguage}
@@ -444,6 +456,7 @@ const FormDesigner: React.FC<IFormDesignerProps> = ({ sp, currentUser }) => {
             <FormHost
               key={`${previewKey}-${formMode}-${previewLanguage}`}
               contentLanguage={previewLanguage}
+              urlParams={readUrlParams(`?${previewQuery.replace(/^\?/, '')}`)}
               definition={definition}
               fields={fields}
               mode={formMode}
@@ -458,6 +471,18 @@ const FormDesigner: React.FC<IFormDesignerProps> = ({ sp, currentUser }) => {
           </div>
         )}
       </div>
+
+      {linkBuilderOpen && definition && ct && list && (
+        <LinkBuilder
+          webUrl={sp.webUrl}
+          listId={listId}
+          listUrl={list.url}
+          contentTypeId={ct.id}
+          definition={definition}
+          fieldsByName={fieldsByName}
+          onDismiss={() => setLinkBuilderOpen(false)}
+        />
+      )}
 
       {deployOpen && definition && ct && list && (
         <DeployDialog

@@ -10,6 +10,8 @@ export type MessageKind = 'info' | 'warning' | 'error' | 'success';
 export interface IScriptHostBridge {
   mode: FormMode;
   currentUser?: ICurrentUser;
+  /** Alle Query-Parameter der Formular-URL. */
+  urlParams: Record<string, string>;
   sp?: SpService;
   hasField(name: string): boolean;
   fieldKind(name: string): string | undefined;
@@ -146,6 +148,7 @@ export class FormScriptHost {
     return {
       field,
       type: bridge.mode,
+      urlParams: { ...bridge.urlParams },
       get title(): string {
         return bridge.getTitle();
       },

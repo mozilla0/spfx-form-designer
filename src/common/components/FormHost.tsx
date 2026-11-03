@@ -11,6 +11,7 @@ import { FormHeader } from './FormHeader';
 import { getLanguage, t } from '../i18n';
 import { localizeDefinition } from '../translate';
 import { ContentLanguage } from '../model';
+import { prefillParams, resolvePrefill } from '../urlPrefill';
 
 export interface IFormHostProps {
   definition: IFormDefinition;
@@ -26,6 +27,8 @@ export interface IFormHostProps {
   onRequestEdit?: () => void;
   /** Sprache der Formularinhalte; Standard: Sprache der Seite. */
   contentLanguage?: ContentLanguage;
+  /** Query-Parameter für die Vorbelegung (fd_<Feld>=Wert) und form.urlParams. */
+  urlParams?: Record<string, string>;
 }
 
 interface IFormHostState {
@@ -82,6 +85,25 @@ export class FormHost extends React.Component<IFormHostProps, IFormHostState> {
   }
 
   public componentDidMount(): void {
+    this.init().catch((e: Error) => {
+      this.scriptErrors.push(e.message);
+      this.refresh();
+    });
+  }
+
+  /** Reihenfolge: Standardwerte (Konstruktor) → URL-Parameter → Formular-Skript. */
+  private async init(): Promise<void> {
+    const setting = this.def.urlPrefill || 'new';
+    const mode = this.props.mode;
+    const enabled = setting === 'newAndEdit' ? mode !== 'display' : setting === 'new' ? mode === 'new' : false;
+    const params = this.props.urlParams || {};
+    if (enabled && Object.keys(prefillParams(params)).length) {
+      const r = await resolvePrefill(params, this.props.fields, this.props.sp);
+      Object.keys(r.values).forEach((name) => {
+        this.values[name] = r.values[name];
+      });
+      r.errors.forEach((e) => this.messages.push({ kind: 'warning', text: t('URL-Parameter: {0}', e) }));
+    }
     this.host.run(this.def.script);
     this.host.fireReady();
     this.refresh();
@@ -369,6 +391,7 @@ export class FormHost extends React.Component<IFormHostProps, IFormHostState> {
     return {
       mode: this.props.mode,
       currentUser: this.props.currentUser,
+      urlParams: this.props.urlParams || {},
       sp: this.props.sp,
       hasField: (name) => !!this.fieldsByName[name],
       fieldKind: (name) => (this.fieldsByName[name] ? this.fieldsByName[name].kind : undefined),

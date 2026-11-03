@@ -27,6 +27,7 @@ Alle drei liegen im selben Paket (`form-designer.sppkg`), damit sie immer dassel
 - Standardwerte im Formular «Neu»: fester Wert, heute, heute + n (Werk-)Tage, nächster Werktag, Monatsende, aktueller Benutzer, JavaScript-Formel
 - Formular-Skript mit `form`-API (siehe unten)
 - Vorschau mit ausgeführtem Skript, optional mit einem bestehenden Element
+- Vorbelegung über URL-Parameter, mit Link-Generator
 - Darstellung je Formulartyp: Panel, Dialog oder ganze Seite, mit einstellbarer Breite
 - Mehrsprachig: Oberfläche auf Deutsch und Englisch, Formularinhalte übersetzbar
 - Bereitstellung mit Sicherung der bisherigen Konfiguration und «Zurücksetzen»
@@ -57,6 +58,114 @@ Verwaltete Metadaten und Links werden über `ValidateUpdateListItem` gespeichert
 **Formularinhalte:** In der Ansicht «Übersetzungen» des Designers lassen sich Titel, Untertitel, Tabs, Abschnitte, Feldbezeichnungen, Hilfetexte und eigene Fehlermeldungen übersetzen. Dort wird auch festgelegt, in welcher Sprache die Texte erfasst sind. Fehlt eine Übersetzung, erscheint der erfasste Text. In der Vorschau lässt sich die Sprache umschalten.
 
 Technisch sind die deutschen Texte zugleich die Schlüssel (`t('Speichern')`), die englischen stehen in `src/common/i18n.en.ts`. Ein Unit-Test prüft, dass zu jedem Text eine Übersetzung existiert.
+
+## Vorbelegung per URL
+
+Felder lassen sich über Parameter in der URL vorbelegen: `fd_<InternerName>=Wert`. Gross-/Kleinschreibung des Feldnamens spielt keine Rolle.
+
+```
+…/_layouts/15/SPListForm.aspx?PageType=8&List={ListId}&ContentTypeId=…&fd_Title=Heizung&fd_Prioritaet=Hoch&fd_FaelligAm=today+10
+…/Lists/Auftraege?fdOpen=new&fd_Title=Heizung        (Listenansicht, öffnet das Formular im Panel/Dialog)
+…/Lists/Auftraege?fdOpen=edit&fdId=8                  (Element 8 bearbeiten)
+```
+
+| Spaltentyp | Format |
+|---|---|
+| Text, Zahl, Auswahl | Wert, z. B. `Offen` |
+| Mehrfachauswahl | `A;B` |
+| Ja/Nein | `ja`/`nein`, `1`/`0`, `true`/`false` |
+| Datum | `JJJJ-MM-TT`, `today`, `today+7`, `today-1` |
+| Datum und Uhrzeit | `JJJJ-MM-TTTHH:mm` oder wie Datum |
+| Person (einzeln/mehrere) | E-Mail-Adresse oder Anmeldename; mehrere mit `;` |
+| Nachschlagen (einzeln/mehrere) | ID oder Titel; mehrere mit `;` |
+| Verwaltete Metadaten | Begriff oder Begriffs-ID; mehrere mit `;` |
+| Link oder Bild | `URL` oder `URL|Beschreibung` |
+
+- Einstellung unter «Titel und Tabs» › «Vorbelegung per URL»: aus, nur im Formular «Neu» (Standard) oder in «Neu» und «Bearbeiten».
+- Reihenfolge: Standardwerte → URL-Parameter → Formular-Skript. Ungültige Werte erscheinen als Hinweis im Formular.
+- Alle Parameter der URL stehen im Skript als `form.urlParams` zur Verfügung, z. B. `form.urlParams.quelle`.
+- «Link erzeugen» im Designer baut den Link mit Vorbelegung (Formularseite oder Listenansicht mit Panel).
+- `fdOpen` wird nach dem Öffnen aus der Adresszeile entfernt, damit das Formular beim Neuladen nicht erneut aufgeht.
+- Die Designer-Vorschau hat ein Feld für URL-Parameter.
+
+### Beispiele
+
+Die Beispiele verwenden eine Liste «Auftraege» unter `https://contoso.sharepoint.com/sites/service` mit den Spalten `Title`, `Kunde` (Nachschlagen), `Prioritaet` (Auswahl), `FaelligAm` (Datum), `Verantwortlich` (Person, mehrere), `Standort` (verwaltete Metadaten) und `Kanal` (Auswahl).
+
+**1. Einfacher Link mit Vorbelegung**
+
+```
+https://contoso.sharepoint.com/sites/service/Lists/Auftraege?fdOpen=new&fd_Title=Jahresservice%20W%C3%A4rmepumpe&fd_Prioritaet=Hoch&fd_FaelligAm=today+5
+```
+
+Öffnet die Liste und darin das Formular «Neu» im Panel: Titel «Jahresservice Wärmepumpe», Priorität «Hoch», fällig in fünf Tagen. Leerzeichen und Umlaute müssen URL-kodiert sein (`%20`, `%C3%A4`) – «Link erzeugen» im Designer erledigt das automatisch.
+
+**2. Personen, Nachschlagen und Metadaten**
+
+```
+…/Lists/Auftraege?fdOpen=new&fd_Kunde=12&fd_Verantwortlich=anna.muster@contoso.ch;peter.beispiel@contoso.ch&fd_Standort=Altdorf
+```
+
+`fd_Kunde=12` wählt den Kunden mit der ID 12 (alternativ den Titel, z. B. `fd_Kunde=Muster%20AG`). Mehrere Personen werden mit `;` getrennt, der Standort per Begriff oder Begriffs-ID.
+
+**3. Schaltfläche in einer anderen Liste (Spaltenformatierung)**
+
+In der Kundenliste eine Spalte mit dieser Formatierung anlegen. Jede Zeile erhält einen Link «Auftrag erfassen», der das Formular mit dem jeweiligen Kunden vorbelegt öffnet:
+
+```json
+{
+  "$schema": "https://developer.microsoft.com/json-schemas/sp/v2/column-formatting.schema.json",
+  "elmType": "a",
+  "txtContent": "Auftrag erfassen",
+  "attributes": {
+    "href": "='/sites/service/Lists/Auftraege?fdOpen=new&fd_Kunde=' + [$ID]",
+    "target": "_self",
+    "class": "ms-fontColor-themePrimary ms-fontWeight-semibold"
+  }
+}
+```
+
+**4. Link in einer Power-Automate-Mail**
+
+Neues Formular mit dem Betreff einer eingegangenen Mail als Titel:
+
+```
+concat('https://contoso.sharepoint.com/sites/service/Lists/Auftraege?fdOpen=new&quelle=mail&fd_Title=', encodeUriComponent(triggerOutputs()?['body/subject']))
+```
+
+Bestehendes Element zum Bearbeiten öffnen:
+
+```
+https://contoso.sharepoint.com/sites/service/Lists/Auftraege?fdOpen=edit&fdId=@{triggerOutputs()?['body/ID']}
+```
+
+**5. URL-Parameter im Formular-Skript auswerten**
+
+Parameter ohne `fd_` belegen keine Felder vor, stehen aber im Skript zur Verfügung. So lassen sich etwa Herkunft oder Vorgaben steuern:
+
+```js
+form.onReady(() => {
+  // Aufruf aus der Mail aus Beispiel 4
+  if (form.urlParams.quelle === 'mail') {
+    form.field('Kanal').value = 'E-Mail';
+    form.field('Kanal').disabled = true;
+  }
+  // Vorbelegten Kunden nicht mehr ändern lassen
+  if (form.urlParams.fd_Kunde) {
+    form.field('Kunde').disabled = true;
+  }
+});
+```
+
+`form.urlParams` enthält die Parameter mit der Schreibweise aus der URL.
+
+**6. Direkt auf die Formularseite statt ins Panel**
+
+```
+https://contoso.sharepoint.com/sites/service/_layouts/15/SPListForm.aspx?PageType=8&List=%7B<ListId>%7D&ContentTypeId=<InhaltstypId>&RootFolder=%2Fsites%2Fservice%2FLists%2FAuftraege&fd_Title=Test
+```
+
+Sinnvoll, wenn die Panel-Erweiterung nicht auf der Liste registriert ist oder das Formular in einem eigenen Tab aufgehen soll. Listen- und Inhaltstyp-ID setzt «Link erzeugen» ein (Option «Über die Listenansicht öffnen» abwählen).
 
 ## Kopfbereich
 
@@ -135,6 +244,7 @@ form.onBeforeSave(async () => {
 | `form.onReady(fn)` · `form.onBeforeSave(fn)` | Laden und Speichern |
 | `form.showMessage(text, art)` | `'info'`, `'warning'`, `'error'`, `'success'` |
 | `form.type` · `form.title` | Formulartyp und Titel |
+| `form.urlParams` | Alle Query-Parameter der Formular-URL |
 | `form.date` | `today`, `addDays`, `addWorkdays`, `endOfMonth`, `format`, `iso` |
 | `form.currentUser` · `form.sp.get(pfad)` / `.post(pfad, body)` | Benutzer und REST-Zugriff auf die Website |
 
