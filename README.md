@@ -3,8 +3,9 @@
 **English** · [Deutsch](README.de.md)
 
 WYSIWYG form designer for SharePoint Online lists. Forms are designed in the browser with drag and drop and deployed as an **SPFx List Form Customizer** – no Windows desktop tool required.
-
-Author: Matthias Hummler
+<img width="1094" height="989" alt="Bildschirmfoto_20261103_194146" src="https://github.com/user-attachments/assets/0bb932e2-c540-409d-a405-ed7e11ab5616" />
+<img width="1102" height="1122" alt="Bildschirmfoto_20261103_194232" src="https://github.com/user-attachments/assets/a3120ce6-1c81-45da-85a0-099feb80afe5" />
+<img width="1261" height="989" alt="Bildschirmfoto_20261103_194206" src="https://github.com/user-attachments/assets/ce98024b-dba7-49da-a56b-c5bfdcee868c" />
 
 ## Components
 
